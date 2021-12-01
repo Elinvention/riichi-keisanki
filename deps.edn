@@ -1,0 +1,9 @@
+{:paths ["src"]
+ :deps
+ {org.clojure/clojure {:mvn/version "1.10.3"}
+  org.clojure/math.numeric-tower {:mvn/version "0.0.4"}
+  org.clojure/core.match {:mvn/version "1.0.0"}
+  org.clojure/core.cache {:mvn/version "1.0.217"}
+  cljfx/cljfx {:mvn/version "1.7.16"}}
+ :aliases {:test {:extra-paths ["test"]}
+           :main {:exec-fn riichi-calc.fx/-main}}}
