@@ -103,6 +103,7 @@
   {:fx/type fx/ext-let-refs
    :refs {::toggle-group {:fx/type :toggle-group}} ;; define toggle group
    :desc {:fx/type :h-box
+          :spacing 10
           :children (for [option options]
                       {:fx/type :radio-button
                        ;; use previously defined toggle group
