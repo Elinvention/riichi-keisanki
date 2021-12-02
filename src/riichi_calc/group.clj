@@ -58,6 +58,9 @@
 (defn couple? [group]
   (= (:kind group) :couple))
 
+(defn to-string [group]
+  (str "[" (apply str (map tile/tile-name (expand group))) "]"))
+
 (defn non-couple? [group]
   ((some-fn straight? tris? quad?) group))
 

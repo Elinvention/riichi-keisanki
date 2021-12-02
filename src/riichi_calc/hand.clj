@@ -422,12 +422,17 @@
                                 [_ :tsumo] (non-dealer-tsumo han fu))]
                     {:yakus yakus :han han :fu fu :score score})))))))
 
+(defn to-string [{:keys [an min]}]
+  (str "{:an " (apply str
+                      (map tile/tile-name (remove :kind an))
+                      (map group/to-string (filter :kind an)))
+       " :min " (apply str (map group/to-string min))))
 
 (comment
-  (let [game {:start-points 25000 :target-points 30000
+  {:start-points 25000 :target-points 30000
               :players [{:name "Elia" :points 25000 :score 0 :seat :east}
                         {:name "Giangi" :points 25000 :score 0 :seat :west}
                         {:name "Lorenzo" :points 25000 :score 0 :seat :south}
                         {:name "Luca" :points 25000 :score 0 :seat :north}]
               :rounds :east :turns []
-              :uma [20 10] :oka 20000}]))
+   :uma [20 10] :oka 20000})
