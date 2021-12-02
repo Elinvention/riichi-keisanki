@@ -209,13 +209,15 @@
   {:fx/type :v-box
    :spacing 5
    :children [{:fx/type :label :style {:-fx-font-size 32} :text "Summary"}
-              (let [summary (hand/hand-summary hand)]
+              (let [{:keys [invalid yakus han fu score]} (hand/hand-summary hand)]
                 {:fx/type :label
-                 :text (if (:invalid summary)
-                         (:invalid summary)
-                         (str (:yakus summary) "\n"
-                              (:han summary) " han " (:fu summary) " fu\n"
-                              "Score: " (:score summary)))})]})
+                 :text (if (some? invalid) invalid
+                         (str yakus "\n"
+                              (if (= han :yakuman) "Yakuman"
+                                  (str han " han " fu " fu")) "\n"
+                              "Score: " (if (integer? score)
+                                          (str score (when (= (:agari hand) :tsumo) "⨉3"))
+                                          (str (first score) "+" (second score) "⨉2"))))})]})
 
 (def glossary
   {:fx/type :v-box

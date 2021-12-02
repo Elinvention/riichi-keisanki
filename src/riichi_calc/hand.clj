@@ -259,6 +259,7 @@
     (6 7)    3000
     (8 9 10) 4000
     (11 12)  6000
+    :yakuman 8000
     (when (> han 12) 8000)))
 
 (comment
@@ -338,6 +339,7 @@
 
 (defn basic-points [han fu]
   (cond
+    (keyword? han) (limit-hands han)
     (<= 1 han 4) (* fu (math/expt 2 (+ 2 han)))
     (> han 4) (limit-hands han)))
 
