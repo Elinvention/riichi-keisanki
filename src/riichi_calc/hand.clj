@@ -179,8 +179,9 @@
 (defn sanshoku-doukou?
   "The hand includes three groups of triplets with the same number. "
   [hand]
-  (let [tris (group-by :value (distinct (filter group/tris? (full hand))))
-        dominant (max-key key tris)]
+  (let [tris (filter (some-fn group/tris? group/quad?) (full hand))
+        tris-by-value (group-by :value (distinct tris))
+        dominant (val (apply max-key key tris-by-value))]
     (and (>= (count dominant) 3) (= (count (distinct (map :seed dominant))) 3))))
 
 (defn sankantsu?
@@ -194,6 +195,53 @@
   (let [dragons (filter group/dragon? (full hand))]
     (and (= 3 (count dragons)) (some group/couple? dragons))))
 
+(defn daisangen?
+  "The hand possesses three groups (triplets or quads) of all the dragons."
+  [hand]
+  (let [dragons (filter (every-pred group/dragon? group/non-couple?) (full hand))]
+    (= 3 (count dragons))))
+
+(defn suuankou?
+  "This hand is composed of four groups of closed triplets.
+  When this hand has a shanpon pattern and the win is via ron, then it would
+  not be counted as such;
+  only as the lesser toitoi with sanankou."
+  [{:keys [an min agari] :as hand}]
+  (and (empty? min)
+       (= 4 (count (filter (some-fn group/tris? group/quad?) an)))
+       (or (not= (machi hand) :shanpon) (= agari :tsumo))))
+
+(defn shousuushii?
+  "This hand has three groups (triplets or quads) of the wind tiles plus a pair of the fourth kind."
+  [hand]
+  (let [winds (filter group/wind? (full hand))]
+    (and (= 4 (count winds)) (some group/couple? winds))))
+
+(defn daisuushii?
+  "This hand has four groups (triplets or quads) of all four wind tiles."
+  [hand]
+  (let [winds (filter (every-pred group/wind? group/non-couple?) (full hand))]
+    (= 4 (count winds))))
+
+(defn tsuuiisou?
+  "Every group of tiles are composed of honor tiles."
+  [hand]
+  (let [winds (filter group/honor? (full hand))]
+    (= 4 (count winds))))
+
+(defn chuuren-poutou?
+  "A hand consisting of the tiles 1112345678999 in the same suit plus any one
+   extra tile of the same suit. "
+  [hand]
+  (and (full-flush? hand)
+       (let [f (frequencies (map :value (expand hand)))]
+         (every? identity (map #(>= (get f %1 0) %2) (range 1 10) [3 1 1 1 1 1 1 1 3])))))
+
+(defn suukantsu?
+  "Any hand with four calls of kan."
+  [hand]
+  (= 4 (count (filter group/quad? (full hand)))))
+
 (defn list-yakus [{:keys [agari riichi ippatsu] :as hand}]
   (let [n-yakuhai (count-yakuhai hand)
         n-redfive (count-redfive hand)
@@ -206,7 +254,15 @@
                       (= agari :tsumo) (assoc :menzen-tsumo 1)
                       (iipeikou? hand) (assoc :iipeikou 1)
                       (pinfu? hand) (assoc :pinfu 1)
-                      (chiitoitsu? hand) (assoc :chiitoitsu 2))
+                      (chiitoitsu? hand) (assoc :chiitoitsu 2)
+                      (kokushi-musou? hand) (assoc :kokushi-musou :yakuman)
+                      (suuankou? hand) (assoc :suuankou :yakuman))
+      (daisangen? hand) (assoc :daisangen :yakuman)
+      (shousuushii? hand) (assoc :shousuushii :yakuman)
+      (daisuushii? hand) (assoc :daisuushii :yakuman)
+      (tsuuiisou? hand) (assoc :tsuuiisou :yakuman)
+      (chuuren-poutou? hand) (assoc :chuuren-poutou :yakuman)
+      (suukantsu? hand) (assoc :suukantsu :yakuman)
       (full-flush? hand) (assoc :chinitsu (if (closed? hand) 6 5))
       (half-flush? hand) (assoc :honitsu (if (closed? hand) 3 2))
       (tanyao? hand) (assoc :tanyao 1)
@@ -432,9 +488,9 @@
 
 (comment
   {:start-points 25000 :target-points 30000
-              :players [{:name "Elia" :points 25000 :score 0 :seat :east}
-                        {:name "Giangi" :points 25000 :score 0 :seat :west}
-                        {:name "Lorenzo" :points 25000 :score 0 :seat :south}
-                        {:name "Luca" :points 25000 :score 0 :seat :north}]
-              :rounds :east :turns []
+   :players [{:name "Elia" :points 25000 :score 0 :seat :east}
+             {:name "Giangi" :points 25000 :score 0 :seat :west}
+             {:name "Lorenzo" :points 25000 :score 0 :seat :south}
+             {:name "Luca" :points 25000 :score 0 :seat :north}]
+   :rounds :east :turns []
    :uma [20 10] :oka 20000})
