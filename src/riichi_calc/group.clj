@@ -122,26 +122,43 @@
 (defn in? [tile group]
   (>= (.indexOf (expand group) tile) 0))
 
+(defn seq-sub
+  "Subtracts a sequence s2 from a sequence s1 where s2 is a subset of s1.
+  For example (seq-sub [1 1 2 3] [1 2]) => (1 3)"
+  [s1 s2]
+  (let [f1 (frequencies s1)
+        f2 (frequencies s2)
+        m (merge-with - f1 f2)
+        r (mapcat #(repeat (second %) (first %)) m)]
+    r))
+
 (defn group-backtrack
-  ([hand] (concat (group-backtrack [] (remove :kind hand) false) (filter :kind hand)))
-  ([visited not-visited couple-found]
+  ([hand] (if-let [grouped (group-backtrack [] (remove :kind hand) false 0)]
+            (vec (concat grouped (filter :kind hand)))
+            hand))
+  ([visited not-visited couple-found depth]
+   (println "group-backtrack" (map to-string visited)
+            (map tile/tile-name not-visited) couple-found depth)
    (letfn
-    [(try-extract
+    [(try-consecutive
        [n]
        (when (or (not couple-found) (> n 2))
-         (let [mgroup (group (take n not-visited))]
-           (if (some? mgroup)
-             (group-backtrack (conj visited mgroup)
+         (let [taken (take n not-visited)]
+           (when (= (count taken) n)
+             (when-let [new-group (group taken)]
+               (group-backtrack (conj visited new-group)
                       (nthrest not-visited n)
-                      (if (= n 2) true couple-found))
-             (let [tiles-deduped (take n (dedupe not-visited))
-                   group-deduped (group tiles-deduped)]
-               (when (some? group-deduped)
-                 (group-backtrack (concat visited (repeat (* 2 (count group-deduped)) group-deduped))
-                          (filter #(some (set tiles-deduped) %) not-visited)
-                          (if (= n 2) true couple-found))))))))]
+                                (if (= n 2) true couple-found)
+                                (inc depth)))))))
+     (try-straight
+      []
+      (let [tiles-deduped (take 3 (dedupe not-visited))]
+        (when-let [group-deduped (group tiles-deduped)]
+          (group-backtrack (conj visited group-deduped)
+                           (vec (seq-sub not-visited tiles-deduped))
+                           couple-found (inc depth)))))]
      (if (empty? not-visited) visited
-         (or (try-extract 2) (try-extract 3) (try-extract 4))))))
+         (or (try-consecutive 4) (try-consecutive 3) (try-straight) (try-consecutive 2))))))
 
 (defn group-chiitoitsu [hand]
   (let [groups (mapv group (partition 2 2 hand))]
