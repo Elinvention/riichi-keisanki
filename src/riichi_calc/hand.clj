@@ -179,10 +179,10 @@
 (defn sanshoku-doukou?
   "The hand includes three groups of triplets with the same number. "
   [hand]
-  (let [tris (filter (some-fn group/tris? group/quad?) (full hand))
-        tris-by-value (group-by :value (distinct tris))
+  (when-let [tris (not-empty (filter (some-fn group/tris? group/quad?) (full hand)))]
+    (let [tris-by-value (group-by :value (distinct tris))
         dominant (val (apply max-key key tris-by-value))]
-    (and (>= (count dominant) 3) (= (count (distinct (map :seed dominant))) 3))))
+      (and (>= (count dominant) 3) (= (count (distinct (map :seed dominant))) 3)))))
 
 (defn sankantsu?
   "Three kans are called for this hand. "
