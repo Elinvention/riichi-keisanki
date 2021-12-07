@@ -84,11 +84,11 @@
       :couple :tanki
       :tris :shanpon
       :straight (match [(group/expand agari-group) (:value agaripai)]
-                    [[agaripai _ _] 7] :penchan
-                    [[agaripai _ _] _] :ryanmen
-                    [[_ agaripai _] _] :kanchan
-                    [[_ _ agaripai] 3] :penchan
-                    [[_ _ agaripai] _] :ryanmen))))
+                  [[agaripai _ _] 7] :penchan
+                  [[agaripai _ _] _] :ryanmen
+                  [[_ agaripai _] _] :kanchan
+                  [[_ _ agaripai] 3] :penchan
+                  [[_ _ agaripai] _] :ryanmen))))
 
 
 ; Yaku yeeeee
@@ -181,7 +181,7 @@
   [hand]
   (when-let [tris (not-empty (filter (some-fn group/tris? group/quad?) (full hand)))]
     (let [tris-by-value (group-by :value (distinct tris))
-        dominant (val (apply max-key key tris-by-value))]
+          dominant (val (apply max-key key tris-by-value))]
       (and (>= (count dominant) 3) (= (count (distinct (map :seed dominant))) 3)))))
 
 (defn sankantsu?
