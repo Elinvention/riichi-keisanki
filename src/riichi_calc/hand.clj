@@ -111,8 +111,8 @@
 (defn valid? [hand]
   (or (regular? hand) (chiitoitsu? hand) (kokushi-musou? hand)))
 
-(defn tanyao? [{:keys [an min]}]
-  (and (empty? min) (every? group/simple? an)))
+(defn tanyao? [{:keys [an]}]
+  (every? group/simple? an))
 
 (defn chinroutou? [hand]
   (every? group/terminal? (full hand)))
