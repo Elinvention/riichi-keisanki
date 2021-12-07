@@ -7,47 +7,35 @@
   ([[{:keys [seed value]} & _ :as tiles]]
    (let [red (some? (some tile/redfive? tiles))]
      (cond
-       (tile/couple? tiles) (group :couple seed value red)
-       (tile/tris? tiles) (group :tris seed value red)
-       (tile/quad? tiles) (group :quad seed value red)
+       (tile/couple? tiles) (group tiles :couple seed value red)
+       (tile/tris? tiles) (group tiles :tris seed value red)
+       (tile/quad? tiles) (group tiles :quad seed value red)
        (tile/straight? tiles) (let [value (first (sort (map :value tiles)))]
-                                (group :straight seed value red))
+                                (group tiles :straight seed value red))
        :else nil)))
-  ([kind seed value red]
+  ([tiles kind seed value red]
    (when (and (contains? #{:couple :tris :straight :quad} kind)
-            (case seed
-              (:man :sou :pin) (and (integer? value) (<= 1 value 9))
-              :dragon (and (not= kind :straight) (contains? #{:white :green :red} value))
-              :wind (and (not= kind :straight) (contains? #{:east :south :west :north} value))
-              false))
-     {:kind kind :seed seed :value value :red red})))
+              (case seed
+                (:man :sou :pin) (and (integer? value) (<= 1 value 9))
+                :dragon (and (not= kind :straight) (contains? #{:white :green :red} value))
+                :wind (and (not= kind :straight) (contains? #{:east :south :west :north} value))
+                false))
+     {:tiles (vec tiles) :kind kind :seed seed :value value :red red})))
 
 (defn group? [group]
   (contains? #{:couple :tris :quad :straight} (:kind group)))
 
-(defn expand [{:keys [kind seed value]}]
-  (case kind
-    :couple (tile/couple seed value)
-    :tris (tile/tris seed value)
-    :quad (tile/quad seed value)
-    :straight (tile/straight seed value)
-    nil))
+(defn expand [{:keys [tiles]}]
+  tiles)
 
-(defn couple
-  ([seed value red] (group :couple seed value red))
-  ([seed value] (couple seed value false))
-  ([{:keys [seed value red]}] (couple seed value red)))
-(defn tris
-  ([seed value red] (group :tris seed value red))
-  ([seed value] (tris seed value false))
-  ([{:keys [seed value red]}] (tris seed value red)))
-(defn quad
-  ([seed value] (group :quad seed value (= value 5)))
-  ([{:keys [seed value]}] (quad seed value)))
-(defn straight
-  ([seed value red] (group :straight seed value red))
-  ([seed value] (straight seed value false))
-  ([{:keys [seed value red]}] (straight seed value red)))
+(defn couple [tile]
+  (group (tile/couple tile)))
+(defn tris [tile]
+  (group (tile/tris tile)))
+(defn quad [tile]
+  (group (tile/quad tile)))
+(defn straight [tile]
+  (group (tile/straight tile)))
 
 (defn straight? [group]
   (= (:kind group) :straight))

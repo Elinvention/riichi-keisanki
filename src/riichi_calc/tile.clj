@@ -84,15 +84,19 @@
       (quad? tiles)
       (straight? tiles)))
 
-(defn repeat-tile [seed value n]
-  (some->> (tile seed value) (repeat n) (vec)))
-(defn couple [seed value] (repeat-tile seed value 2))
-(defn tris [seed value] (repeat-tile seed value 3))
-(defn quad [seed value] (repeat-tile seed value 4))
-(defn straight [seed from]
+(defn repeat-tile [{:keys [seed value red]} n]
+  (let [repeat-n (partial repeat n)]
+    (some-> (tile seed value) (repeat-n) (vec) (assoc-in [0 :red] red))))
+(defn couple [tile]
+  (repeat-tile tile 2))
+(defn tris [tile]
+  (repeat-tile tile 3))
+(defn quad [tile]
+  (repeat-tile tile 4))
+(defn straight [{:keys [seed value red]}]
   (when (and (contains? #{:man :sou :pin} seed)
-           (integer? from) (<= 1 from 7))
-    (mapv #(tile seed %) (range from (+ from 3)))))
+             (integer? value) (<= 1 value 7))
+    (mapv #(tile seed % (and red (= 5 %))) (range value (+ value 3)))))
 (defn with-red [tiles index]
   (assoc-in tiles [index :red] true))
 
