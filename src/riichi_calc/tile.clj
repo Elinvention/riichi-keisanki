@@ -96,20 +96,23 @@
 (defn with-red [tiles index]
   (assoc-in tiles [index :red] true))
 
-(defn tile-key [{:keys [value] :as tile}]
-  (cond
-    (man? tile) value
-    (sou? tile) (+ value 10)
-    (pin? tile) (+ value 20)
-    (wind? tile) (case value
-                   :east 31
-                   :south 32
-                   :west 33
-                   :north 34)
-    (dragon? tile) (case value
-                     :white 41
-                     :green 42
-                     :red 43)))
+(defn tile-key [{:keys [value red] :as tile}]
+  (+ (cond
+       (man? tile) (* value 10)
+       (sou? tile) (+ (* value 10) 100)
+       (pin? tile) (+ (* value 20) 200)
+       (wind? tile) (case value
+                      :east 310
+                      :south 320
+                      :west 330
+                      :north 340)
+       (dragon? tile) (case value
+                        :white 410
+                        :green 420
+                        :red 430))
+     (if red 5 0)))
+
+(tile-key (tile :dragon :green))
 
 (defn wind-next [wind]
   (case wind
