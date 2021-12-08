@@ -200,7 +200,8 @@
                :on-selected-changed (fn [selected] (swap! *state assoc-in [:hand :riichi] selected))}
               {:fx/type :check-box
                :text "Ippatsu"
-               :on-selected-changed (fn [selected] (swap! *state assoc-in [:hand :ippatsu] selected))}
+               :on-selected-changed (fn [selected] (swap! *state assoc-in [:hand :ippatsu] selected))
+               :disable (not riichi)}
               {:fx/type :button
                :text "Reset"
                :on-action (fn [_] (reset! *state initial-state))
