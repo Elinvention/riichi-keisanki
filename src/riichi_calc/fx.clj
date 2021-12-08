@@ -14,20 +14,19 @@
 (def conj-sort-tile (comp vec (partial sort-by tile/tile-key) conj))
 
 (defn keyboard-input [tile]
-  (let [{:keys [hand keyboard-mode]} @*state
-        {:keys [dorahyouji riichi]} hand]
+  (let [{:keys [hand keyboard-mode]} @*state]
     (case keyboard-mode
-      :an (when (hand/can-add-tile? tile hand)
+      :an (when (hand/can-add-tile? hand tile)
             (swap! *state update-in [:hand :an] conj-sort-tile tile))
-      :chii (when (hand/can-add-chii? (group/straight tile) hand)
+      :chii (when (hand/can-add-chii? hand tile)
               (swap! *state update-in [:hand :min] conj (group/straight tile)))
-      :pon (when (hand/can-add-pon? tile hand)
+      :pon (when (hand/can-add-pon? hand tile)
              (swap! *state update-in [:hand :min] conj (group/tris tile)))
-      :kan (when (hand/can-add-kan? tile hand)
+      :kan (when (hand/can-add-kan? hand tile)
              (swap! *state update-in [:hand :min] conj (group/quad tile)))
-      :ankan (when (hand/can-add-kan? tile hand)
+      :ankan (when (hand/can-add-kan? hand tile)
                (swap! *state update-in [:hand :an] conj (group/quad tile)))
-      :dorahyouji (when (and (< (count dorahyouji) (if riichi 10 5)) (< (hand/count-tile tile hand) 4))
+      :dorahyouji (when (hand/can-add-dorahyouji? hand tile)
                     (swap! *state update-in [:hand :dorahyouji] conj tile))
       :agaripai (when (some #{tile} (hand/expand hand))
                   (swap! *state assoc-in [:hand :agaripai] tile)))

@@ -60,20 +60,28 @@
   (- 14 (apply + (count (remove :kind an))
                (map group/virtual-size (filter :kind (concat an min))))))
 
-(defn can-add-tile? [tile hand]
-  (and (> (space-left hand) 0) (< (count-tile tile hand) (if (:red tile) 1 4))))
+(defn can-add-tile? [hand {:keys [red] :as tile}]
+  (and (> (space-left hand) 0)
+       (< (count-tile tile hand) 4)
+       (or (not red) (= 0 (tile/count-exact tile (expand hand))))))
 
-(defn can-add-pon? [tile hand]
-  (and (> (space-left hand) 2) (< (count-tile tile hand) (if (:red tile) 1 2))))
+(defn can-add-pon? [hand {:keys [red] :as tile}]
+  (and (> (space-left hand) 2)
+       (< (count-tile tile hand) 2)
+       (or (not red) (= 0 (tile/count-exact tile (expand hand))))))
 
-(defn can-add-chii? [group hand]
-  (and (some? group)
-       (> (space-left hand) 2)
-       (let [tiles (group/expand group)]
-         (every? #(< (count-tile % hand) (if (:red %) 1 4)) tiles))))
+(defn can-add-chii? [hand tile]
+  (and (> (space-left hand) 2)
+       (let [tiles (tile/straight tile)]
+         (every? (partial can-add-tile? hand) tiles))))
 
-(defn can-add-kan? [tile hand]
+(defn can-add-kan? [hand tile]
   (and (> (space-left hand) 2) (= (count-tile tile hand) 0)))
+
+(defn can-add-dorahyouji? [{:keys [dorahyouji riichi] :as hand} {:keys [red] :as tile}]
+  (and (< (count dorahyouji) (if riichi 10 5))
+       (< (count-tile tile hand) 4)
+       (or (not red) (= 0 (tile/count-exact tile dorahyouji)))))
 
 (defn machi
   "From 待ち, wait. Returns :tanki (pair wait), :shanpon (dual pon wait)

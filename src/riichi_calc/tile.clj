@@ -71,8 +71,12 @@
 
 (defn same? [& tiles]
   (and (apply = (map :seed tiles)) (apply = (map :value tiles))))
+
 (defn count-tile [tile tiles]
   (count (filter (partial same? tile) tiles)))
+
+(defn count-exact [tile tiles]
+  (count (filter #{tile} tiles)))
 
 (defn couple? [tiles] (and (= (count tiles) 2) (apply same? tiles)))
 (defn tris? [tiles] (and (= (count tiles) 3) (apply same? tiles)))
