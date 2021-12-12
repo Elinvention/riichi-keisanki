@@ -108,7 +108,7 @@
   (+ (cond
        (man? tile) (* value 10)
        (sou? tile) (+ (* value 10) 100)
-       (pin? tile) (+ (* value 20) 200)
+       (pin? tile) (+ (* value 10) 200)
        (wind? tile) (case value
                       :east 310
                       :south 320
@@ -120,7 +120,8 @@
                         :red 430))
      (if red 5 0)))
 
-(tile-key (tile :dragon :green))
+(defn sort-tiles [tiles]
+  (into [] (sort-by tile-key tiles)))
 
 (defn wind-next [wind]
   (case wind
