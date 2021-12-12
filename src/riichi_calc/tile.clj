@@ -48,8 +48,11 @@
   (or (dragon? tile)
       (and (wind? tile) (or (= wind-turn value) (= wind-seat value)))))
 
-(defn redfive? [{:keys [value] :as tile}]
-  (and (numeral? tile) (= 5 value) (:red tile false)))
+(defn five? [{:keys [value] :as tile}]
+  (and (numeral? tile) (= 5 value)))
+
+(defn redfive? [tile]
+  (and (five? tile) (:red tile false)))
 
 
 
@@ -101,10 +104,27 @@
   (when (and (contains? #{:man :sou :pin} seed)
              (integer? value) (<= 1 value 7))
     (mapv #(tile seed % (and red (= 5 %))) (range value (+ value 3)))))
+
 (defn with-red [tiles index]
   (assoc-in tiles [index :red] true))
 
-(defn tile-key [{:keys [value red] :as tile}]
+(defn five-index
+  "Returns the index of the first tile with value = 5, nil if there are no 5s"
+  [tiles]
+  (let [indexed-tiles (map-indexed vector tiles)]
+    (some #(when (five? (second %)) (first %)) indexed-tiles)))
+
+(defn red-straight
+  "Returns a straight with akadora if there is a five"
+  [tile]
+  (let [new-straight (straight tile)]
+    (if-let [index (five-index new-straight)]
+      (with-red new-straight index)
+      new-straight)))
+
+(defn tile-key
+  "Maps each tile with an integer. Can be used with sort-by"
+  [{:keys [value red] :as tile}]
   (+ (cond
        (man? tile) (* value 10)
        (sou? tile) (+ (* value 10) 100)
@@ -169,15 +189,19 @@
 (defn url [tile]
   (url-from-name (tile-name tile)))
 
+(def all-34-tiles
+  (vec
+   (concat
+    (for [seed [:man :sou :pin] value (range 1 10)]
+      (tile seed value))
+    (for [seed [:wind] value [:east :south :west :north]]
+      (tile seed value))
+    (for [seed [:dragon] value [:white :green :red]]
+      (tile seed value)))))
+
 (def all-37-tiles
   (vec
-   (flatten
-    (concat
-     (for [seed [:man :sou :pin] value (range 1 10)]
-       (if (= value 5)
-         [(tile seed value) (tile seed value true)]
-         (tile seed value)))
-     (for [seed [:wind] value [:east :south :west :north]]
-       (tile seed value))
-     (for [seed [:dragon] value [:white :green :red]]
-       (tile seed value))))))
+   (flatten (for [tile all-34-tiles]
+              (if (= 5 (:value tile))
+                [tile (redfive (:seed tile))]
+                tile)))))

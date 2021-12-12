@@ -7,19 +7,23 @@
             [riichi-calc.hand :as hand]))
 
 (def initial-state {:hand (hand/hand)
-                    :keyboard-mode :an})
+                    :keyboard-mode :an
+                    :akadora false})
 
 (def *state (atom initial-state))
 
 (def conj-sort-tile (comp vec (partial sort-by tile/tile-key) conj))
 
 (defn keyboard-input [tile]
-  (let [{:keys [hand keyboard-mode]} @*state]
+  (let [{:keys [hand keyboard-mode akadora]} @*state]
     (case keyboard-mode
       :an (when (hand/can-add-tile? hand tile)
             (swap! *state update-in [:hand :an] conj-sort-tile tile))
-      :chii (when (hand/can-add-chii? hand tile)
-              (swap! *state update-in [:hand :min] conj (group/straight tile)))
+      :chii (if akadora
+              (when (hand/can-add-red-chii? hand tile)
+                (swap! *state update-in [:hand :min] conj (group/red-straight tile)))
+              (when (hand/can-add-chii? hand tile)
+                (swap! *state update-in [:hand :min] conj (group/straight tile))))
       :pon (when (hand/can-add-pon? hand tile)
              (swap! *state update-in [:hand :min] conj (group/tris tile)))
       :kan (when (hand/can-add-kan? hand tile)
@@ -112,21 +116,28 @@
                        :text (capitalize (name option))
                        :on-action (assoc on-action :option option)})}})
 
-(defn- keyboard [{:keys [kmode]}]
+(defn- keyboard [{:keys [kmode akadora]}]
   {:fx/type :v-box
    :spacing 5
    :children [{:fx/type radio-group
                :options [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
                :value kmode
                :on-action {:event/type ::selected-radio}}
+              {:fx/type :check-box
+               :text "Akadora (red five)"
+               :selected akadora
+               :on-selected-changed (fn [selected] (swap! *state assoc-in [:akadora] selected))}
               {:fx/type :tile-pane
                :pref-columns 9
                :hgap 1
                :vgap 1
                :pref-tile-width 54
                :pref-tile-height 72
-               :children (for [t tile/all-37-tiles]
-                           {:fx/type keyboard-key-button :tile t})}]})
+               :children (for [t tile/all-34-tiles]
+                           {:fx/type keyboard-key-button
+                            :tile (if (and akadora (= 5 (:value t)))
+                                    (assoc t :red true)
+                                    t)})}]})
 
 (defn- hand-view [{:keys [hand]}]
   {:fx/type :tile-pane
@@ -178,7 +189,8 @@
                :value agari
                :on-action {:event/type ::set-agari}}]})
 
-(defn- control-buttons [{:keys [bakaze jikaze dorahyouji agari agaripai riichi] :as hand}]
+(defn- control-buttons [{:keys [bakaze jikaze dorahyouji agari
+                                agaripai riichi ippatsu] :as hand}]
   {:fx/type :h-box
    :spacing 10
    :children [{:fx/type wind-button
@@ -196,9 +208,11 @@
                :tile agaripai}
               {:fx/type :check-box
                :text "Riichi"
+               :selected riichi
                :on-selected-changed (fn [selected] (swap! *state assoc-in [:hand :riichi] selected))}
               {:fx/type :check-box
                :text "Ippatsu"
+               :selected ippatsu
                :on-selected-changed (fn [selected] (swap! *state assoc-in [:hand :ippatsu] selected))
                :disable (not riichi)}
               {:fx/type :button
@@ -239,10 +253,11 @@ Pon ポン call for open triplet
 Chii チイ call for open straight
 Kan 槓 call for open quad
 Ankan 暗槓 call for concealed kan
+Akadora 赤ドラ red fives
 Riichi 立直 special yaku
 Ippatsu 一発 \"one-shot\" win with riichi in 1 turn"}]})
 
-(defn- tile-pane [{:keys [hand kmode]}]
+(defn- tile-pane [{:keys [hand kmode akadora]}]
   {:fx/type :scroll-pane
    :fit-to-width true
    :content {:fx/type :v-box
@@ -250,18 +265,19 @@ Ippatsu 一発 \"one-shot\" win with riichi in 1 turn"}]})
              :spacing 10
              :children [(assoc hand :fx/type control-buttons)
                         {:fx/type hand-view :hand hand}
-                        {:fx/type keyboard :kmode kmode}
+                        {:fx/type keyboard :kmode kmode :akadora akadora}
                         {:fx/type results-view :hand hand}
                         glossary]}})
 
-(defn- root [{:keys [hand keyboard-mode]}]
+(defn- root [{:keys [hand keyboard-mode akadora]}]
   {:fx/type :stage
    :showing true
    :title "Riichi calculator"
    :scene {:fx/type :scene
            :root {:fx/type tile-pane
                   :hand hand
-                  :kmode keyboard-mode}}})
+                  :kmode keyboard-mode
+                  :akadora akadora}}})
 
 (defn map-event-handler [event]
   (case (:event/type event)

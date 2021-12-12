@@ -36,6 +36,10 @@
   (group (tile/quad tile)))
 (defn straight [tile]
   (group (tile/straight tile)))
+(defn red-straight
+  "Returns a group of straight tiles with akadora if there is a 5"
+  [tile]
+  (group (tile/red-straight tile)))
 
 (defn straight? [group]
   (= (:kind group) :straight))
