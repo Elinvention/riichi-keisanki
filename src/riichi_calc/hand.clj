@@ -189,7 +189,7 @@
   [hand]
   (when-let [tris (not-empty (filter (some-fn group/tris? group/quad?) (full hand)))]
     (let [tris-by-value (group-by :value (distinct tris))
-          dominant (val (apply max-key key tris-by-value))]
+          dominant (val (apply max-key #(count (val %)) tris-by-value))]
       (and (>= (count dominant) 3) (= (count (distinct (map :seed dominant))) 3)))))
 
 (defn sankantsu?
