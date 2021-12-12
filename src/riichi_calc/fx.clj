@@ -94,13 +94,24 @@
    :tile tile
    :on-mouse-clicked (fn [_] (remove-from-hand :dorahyouji index))})
 
-(defn- keyboard-key-button [{tile :tile}]
+(defn can-input? [kmode akadora hand tile]
+  (case kmode
+    :an (hand/can-add-tile? hand tile)
+    :chii (if akadora (hand/can-add-red-chii? hand tile) (hand/can-add-chii? hand tile))
+    :pon (hand/can-add-pon? hand tile)
+    :kan (hand/can-add-kan? hand tile)
+    :ankan (hand/can-add-kan? hand tile)
+    :dorahyouji (hand/can-add-dorahyouji? hand tile)
+    :agaripai (some #{tile} (hand/expand hand))))
+
+(defn- keyboard-key-button [{:keys [tile disable]}]
   {:fx/type :button
    :text ""
    :max-width 54
    :max-height 72
    :graphic {:fx/type tile-view :tile tile}
-   :on-action {:event/type ::keyboard-input :tile tile}})
+   :on-action {:event/type ::keyboard-input :tile tile}
+   :disable disable})
 
 (defn radio-group [{:keys [options value on-action]}]
   {:fx/type fx/ext-let-refs
@@ -116,7 +127,7 @@
                        :text (capitalize (name option))
                        :on-action (assoc on-action :option option)})}})
 
-(defn- keyboard [{:keys [kmode akadora]}]
+(defn- keyboard [{:keys [kmode akadora hand]}]
   {:fx/type :v-box
    :spacing 5
    :children [{:fx/type radio-group
@@ -134,10 +145,12 @@
                :pref-tile-width 54
                :pref-tile-height 72
                :children (for [t tile/all-34-tiles]
+                           (let [actual-t (if (and akadora (= 5 (:value t)))
+                                            (assoc t :red true)
+                                            t)]
                            {:fx/type keyboard-key-button
-                            :tile (if (and akadora (= 5 (:value t)))
-                                    (assoc t :red true)
-                                    t)})}]})
+                            :disable (not (can-input? kmode akadora hand actual-t))
+                            :tile actual-t}))}]})
 
 (defn- hand-view [{:keys [hand]}]
   {:fx/type :tile-pane
@@ -265,7 +278,7 @@ Ippatsu 一発 \"one-shot\" win with riichi in 1 turn"}]})
              :spacing 10
              :children [(assoc hand :fx/type control-buttons)
                         {:fx/type hand-view :hand hand}
-                        {:fx/type keyboard :kmode kmode :akadora akadora}
+                        {:fx/type keyboard :kmode kmode :akadora akadora :hand hand}
                         {:fx/type results-view :hand hand}
                         glossary]}})
 
