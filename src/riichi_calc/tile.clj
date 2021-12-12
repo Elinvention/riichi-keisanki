@@ -170,11 +170,14 @@
   (url-from-name (tile-name tile)))
 
 (def all-37-tiles
-  (concat
-   (for [seed [:man :sou :pin] value (range 1 10)]
-     (tile seed value))
-   [(redfive :man) (redfive :sou) (redfive :pin)]
-   (for [seed [:wind] value [:east :south :west :north]]
-     (tile seed value))
-   (for [seed [:dragon] value [:white :green :red]]
-     (tile seed value))))
+  (vec
+   (flatten
+    (concat
+     (for [seed [:man :sou :pin] value (range 1 10)]
+       (if (= value 5)
+         [(tile seed value) (tile seed value true)]
+         (tile seed value)))
+     (for [seed [:wind] value [:east :south :west :north]]
+       (tile seed value))
+     (for [seed [:dragon] value [:white :green :red]]
+       (tile seed value))))))
