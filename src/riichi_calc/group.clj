@@ -121,9 +121,12 @@
     r))
 
 (defn group-backtrack
-  ([hand] (if-let [grouped (group-backtrack [] (remove :kind hand) false 0)]
-            (vec (concat grouped (filter :kind hand)))
-            hand))
+  ([hand]
+   (let [tiles (vec (remove :kind hand))
+         groups (vec (filter :kind hand))]
+     (if-let [grouped (group-backtrack [] tiles false 0)]
+       (vec (concat grouped groups))
+       hand)))
   ([visited not-visited couple-found depth]
    (println "group-backtrack" (map to-string visited)
             (map tile/tile-name not-visited) couple-found depth)
@@ -135,25 +138,26 @@
            (when (= (count taken) n)
              (when-let [new-group (group taken)]
                (group-backtrack (conj visited new-group)
-                      (nthrest not-visited n)
+                                (vec (nthrest not-visited n))
                                 (if (= n 2) true couple-found)
                                 (inc depth)))))))
      (try-straight
-      []
-      (let [tiles-deduped (take 3 (dedupe not-visited))]
-        (when-let [group-deduped (group tiles-deduped)]
-          (group-backtrack (conj visited group-deduped)
-                           (vec (seq-sub not-visited tiles-deduped))
-                           couple-found (inc depth)))))]
+       []
+       (let [tiles-deduped (take 3 (dedupe not-visited))]
+         (when-let [group-deduped (group tiles-deduped)]
+           (group-backtrack (conj visited group-deduped)
+                            (vec (seq-sub not-visited tiles-deduped))
+                            couple-found (inc depth)))))]
      (if (empty? not-visited) visited
-         (or (try-consecutive 4) (try-consecutive 3) (try-straight) (try-consecutive 2))))))
+         (or (try-consecutive 4) (try-consecutive 3)
+             (try-straight) (try-consecutive 2))))))
 
 (defn group-chiitoitsu [hand]
   (let [groups (mapv group (partition 2 2 hand))]
     (when (every? couple? groups) groups)))
 
 (defn group-hand [hand]
-  (let [sorted-hand (sort-by tile/tile-key hand)]
+  (let [sorted-hand (tile/sort-tiles hand)]
     (or (group-chiitoitsu sorted-hand)
         (group-backtrack sorted-hand))))
 
