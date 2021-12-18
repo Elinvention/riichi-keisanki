@@ -12,9 +12,10 @@
        (tile/quad? tiles) (group tiles :quad seed value red)
        (tile/straight? tiles) (let [value (first (sort (map :value tiles)))]
                                 (group tiles :straight seed value red))
+       (tile/taatsu? tiles) (group tiles :taatsu seed value red)
        :else nil)))
   ([tiles kind seed value red]
-   (when (and (contains? #{:couple :tris :straight :quad} kind)
+   (when (and (contains? #{:couple :tris :straight :quad :taatsu} kind)
               (case seed
                 (:man :sou :pin) (and (integer? value) (<= 1 value 9))
                 :dragon (and (not= kind :straight) (contains? #{:white :green :red} value))
@@ -49,6 +50,8 @@
   (= (:kind group) :quad))
 (defn couple? [group]
   (= (:kind group) :couple))
+(defn taatsu? [group]
+  (= (:kind group) :taatsu))
 
 (defn to-string [group]
   (str "[" (apply str (map tile/tile-name (expand group))) "]"))
@@ -67,7 +70,7 @@
   (cond
     (not (contains? #{:pin :sou :man} seed)) false
     (= kind :straight) (< 1 value 7)
-    (contains? #{:couple :tris :quad} kind) (< 1 value 9)
+    (contains? #{:couple :tris :quad :taatsu} kind) (< 1 value 9)
     :else false))
 
 (defn numeral? [{:keys [seed]}]
@@ -88,6 +91,8 @@
 (defn honor? [group]
   (or (wind? group) (dragon? group)))
 
+(def not-simple? (some-fn terminal? honor?))
+
 (defn value? [wind-turn wind-seat group]
   (tile/value? (first (expand group)) wind-turn wind-seat))
 
@@ -96,13 +101,13 @@
 
 (defn size [{:keys [kind]}]
   (case kind
-    :couple 2
+    (:couple :taatsu) 2
     (:tris :straight) 3
     :quad 4))
 
 (defn virtual-size [{:keys [kind]}]
  (case kind
-   :couple 2
+   (:couple :taatsu) 2
    (:tris :straight :quad) 3))
 
 (defn count-tile [group tile]
@@ -126,44 +131,43 @@
 
 (defn group-backtrack
   ([hand]
-   (let [tiles (vec (remove :kind hand))
+   (let [hand (tile/sort-tiles hand)
+         tiles (vec (remove :kind hand))
          groups (vec (filter :kind hand))]
-     (if-let [grouped (group-backtrack [] tiles false 0)]
+     (if-let [grouped (group-backtrack [] tiles 0)]
        (vec (concat grouped groups))
        hand)))
-  ([visited not-visited couple-found depth]
-   (println "group-backtrack" (map to-string visited)
-            (map tile/tile-name not-visited) couple-found depth)
+  ([visited not-visited depth]
+   (println "group-backtrack" (map #(if (:kind %) (to-string %) (tile/tile-name %)) visited)
+            (map tile/tile-name not-visited) depth)
    (letfn
     [(try-consecutive
        [n]
-       (when (or (not couple-found) (> n 2))
-         (let [taken (take n not-visited)]
-           (when (= (count taken) n)
-             (when-let [new-group (group taken)]
-               (group-backtrack (conj visited new-group)
-                                (vec (nthrest not-visited n))
-                                (if (= n 2) true couple-found)
-                                (inc depth)))))))
+       (let [taken (take n not-visited)]
+         (when (= (count taken) n)
+           (when-let [new-group (group taken)]
+             (group-backtrack (conj visited new-group)
+                              (vec (nthrest not-visited n))
+                              (inc depth))))))
      (try-straight
        []
        (let [tiles-deduped (take 3 (dedupe not-visited))]
          (when-let [group-deduped (group tiles-deduped)]
            (group-backtrack (conj visited group-deduped)
                             (vec (seq-sub not-visited tiles-deduped))
-                            couple-found (inc depth)))))]
-     (if (empty? not-visited) visited
-         (or (try-consecutive 4) (try-consecutive 3)
-             (try-straight) (try-consecutive 2))))))
-
-(defn group-chiitoitsu [hand]
-  (let [groups (mapv group (partition 2 2 hand))]
-    (when (every? couple? groups) groups)))
-
-(defn group-hand [hand]
-  (let [sorted-hand (tile/sort-tiles hand)]
-    (or (group-chiitoitsu sorted-hand)
-        (group-backtrack sorted-hand))))
+                            (inc depth)))))
+     (try-skip
+       []
+       (group-backtrack (conj visited (first not-visited))
+                        (rest not-visited)
+                        (inc depth)))]
+     (case (count not-visited)
+       0 visited
+       1 (vec (concat visited not-visited))
+       2 (or (try-consecutive 2) (vec (concat visited not-visited)))
+       3 (or (try-consecutive 3) (try-straight) (try-consecutive 2) (try-skip))
+       (or (try-consecutive 4) (try-consecutive 3)
+           (try-straight) (try-consecutive 2) (try-skip))))))
 
 (defn fu [open group]
   (cond

@@ -41,8 +41,9 @@
 (defn wind? [{:keys [seed value]}]
   (and (= :wind seed) (contains? #{:east :west :north :south} value)))
 
-(defn honor? [tile]
-  ((some-fn wind? dragon?) tile))
+(def honor? (some-fn wind? dragon?))
+
+(def not-simple? (some-fn terminal? honor?))
 
 (defn value? [{:keys [value] :as tile} wind-turn wind-seat]
   (or (dragon? tile)
@@ -121,6 +122,31 @@
     (if-let [index (five-index new-straight)]
       (with-red new-straight index)
       new-straight)))
+
+(defn taatsu?
+  "Returns true if 2 tiles make a proto-run (like 45 or 46) else false"
+  [[tile1 tile2 :as tiles]]
+  (and (= 2 (count tiles))
+       (apply = (map :seed tiles))
+       (every? numeral? tiles)
+       (< 0 (Math/abs (- (:value tile1) (:value tile2))) 3)))
+
+(defn min-distance
+  "Returns:
+   - 0 if there is a tile in tiles
+   - the minimum distance from other numerals if the tile is a numeral and
+     there are same seed numerals in tiles
+   - Integer/MAX_VALUE otherwise"
+  [tiles tile]
+  (cond
+    (some #{tile} tiles) 0
+    (numeral? tile) (if-let [numerals (not-empty (filter #(and (= (:seed %) (:seed tile)) (numeral? %)) tiles))]
+                      (apply min (map #(Math/abs (- (:value %) (:value tile))) numerals))
+                      Integer/MAX_VALUE)
+    :else Integer/MAX_VALUE))
+
+
+;; Tile sorting and naming
 
 (defn tile-key
   "Maps each tile with an integer. Can be used with sort-by"

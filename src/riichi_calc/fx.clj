@@ -8,7 +8,8 @@
 
 (def initial-state {:hand (hand/hand)
                     :keyboard-mode :an
-                    :akadora false})
+                    :akadora false
+                    :results (hand/results (hand/hand))})
 
 (def *state (atom initial-state))
 
@@ -32,9 +33,14 @@
                (swap! *state update-in [:hand :an] conj (group/quad tile)))
       :dorahyouji (when (hand/can-add-dorahyouji? hand tile)
                     (swap! *state update-in [:hand :dorahyouji] conj tile))
-      :agaripai (when (some #{tile} (hand/expand hand))
-                  (swap! *state assoc-in [:hand :agaripai] tile)))
-  (println @*state)))
+      :agaripai (if (> (hand/space-left hand) 0)
+                  (when (hand/can-add-tile? hand tile)
+                    (swap! *state update-in [:hand :an] conj-sort-tile tile)
+                    (swap! *state assoc-in [:hand :agaripai] tile))
+                  (when (some #{tile} (hand/expand hand))
+                    (swap! *state assoc-in [:hand :agaripai] tile))))
+    (when (= (hand/space-left hand) 2)
+      (swap! *state assoc-in [:keyboard-mode] :agaripai))))
 
 (defn remove-from-hand [path index]
   (swap! *state update-in [:hand path]
@@ -76,25 +82,31 @@
    :children [{:fx/type :label :text "Agaripai"}
               {:fx/type tile-view
                :tile tile
-               :on-mouse-clicked (fn [_] (swap! *state assoc-in [:hand :agaripai] nil))}]})
+               :on-mouse-clicked {:event/type ::set-agaripai :tile nil}}]})
 
 (defn an-view [{:keys [tile index]}]
   {:fx/type tile-view
    :tile tile
-   :on-mouse-clicked (fn [_] (remove-from-hand :an index))})
+   :on-mouse-clicked {:event/type ::remove-from-hand
+                      :path :an
+                      :index index}})
 
 (defn min-view [{:keys [tile index rotate]}]
   {:fx/type tile-view
    :tile tile
    :rotate rotate
-   :on-mouse-clicked (fn [_] (remove-from-hand :min index))})
+   :on-mouse-clicked {:event/type ::remove-from-hand
+                      :path :min
+                      :index index}})
 
 (defn dorahyouji-view [{:keys [tile index]}]
   {:fx/type tile-view
    :tile tile
-   :on-mouse-clicked (fn [_] (remove-from-hand :dorahyouji index))})
+   :on-mouse-clicked {:event/type ::remove-from-hand
+                      :path :dorahyouji
+                      :index index}})
 
-(defn can-input? [kmode akadora hand tile]
+(defn can-input? [kmode akadora hand {:keys [ukeire]} tile]
   (case kmode
     :an (hand/can-add-tile? hand tile)
     :chii (if akadora (hand/can-add-red-chii? hand tile) (hand/can-add-chii? hand tile))
@@ -102,7 +114,9 @@
     :kan (hand/can-add-kan? hand tile)
     :ankan (hand/can-add-kan? hand tile)
     :dorahyouji (hand/can-add-dorahyouji? hand tile)
-    :agaripai (some #{tile} (hand/expand hand))))
+    :agaripai (if (> (hand/space-left hand) 0)
+                (if ukeire (contains? ukeire tile) (hand/can-add-tile? hand tile))
+                (some #{tile} (hand/expand-an hand)))))
 
 (defn- keyboard-key-button [{:keys [tile disable]}]
   {:fx/type :button
@@ -127,17 +141,17 @@
                        :text (capitalize (name option))
                        :on-action (assoc on-action :option option)})}})
 
-(defn- keyboard [{:keys [kmode akadora hand]}]
+(defn- keyboard [{:keys [kmode akadora hand results]}]
   {:fx/type :v-box
    :spacing 5
    :children [{:fx/type radio-group
                :options [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
                :value kmode
-               :on-action {:event/type ::selected-radio}}
+               :on-action {:event/type ::set-keyboard-mode}}
               {:fx/type :check-box
                :text "Akadora (red five)"
                :selected akadora
-               :on-selected-changed (fn [selected] (swap! *state assoc-in [:akadora] selected))}
+               :on-selected-changed {:event/type ::set-akadora}}
               {:fx/type :tile-pane
                :pref-columns 9
                :hgap 1
@@ -148,9 +162,9 @@
                            (let [actual-t (if (and akadora (= 5 (:value t)))
                                             (assoc t :red true)
                                             t)]
-                           {:fx/type keyboard-key-button
-                            :disable (not (can-input? kmode akadora hand actual-t))
-                            :tile actual-t}))}]})
+                             {:fx/type keyboard-key-button
+                              :disable (not (can-input? kmode akadora hand results actual-t))
+                              :tile actual-t}))}]})
 
 (defn- hand-view [{:keys [hand]}]
   {:fx/type :tile-pane
@@ -179,7 +193,7 @@
               {:fx/type :button
                :text ""
                :graphic {:fx/type tile-view :tile (tile/wind wind)}
-               :on-action (fn [_] (advance-wind kind))
+               :on-action {:event/type ::advance-wind :kind kind}
                :max-width 54
                :max-height 72}]})
 
@@ -230,22 +244,17 @@
                :disable (not riichi)}
               {:fx/type :button
                :text "Reset"
-               :on-action (fn [_] (reset! *state initial-state))
+               :on-action {:event/type ::reset}
                :disable (= hand (:hand initial-state))}]})
 
-(defn results-view [{:keys [hand]}]
+(defn results-view [{:keys [results]}]
   {:fx/type :v-box
    :spacing 5
-   :children [{:fx/type :label :style {:-fx-font-size 32} :text "Summary"}
-              (let [{:keys [invalid yakus han fu score]} (hand/hand-summary hand)]
-                {:fx/type :label
-                 :text (if (some? invalid) invalid
-                         (str yakus "\n"
-                              (if (= han :yakuman) "Yakuman"
-                                  (str han " han " fu " fu")) "\n"
-                              "Score: " (if (integer? score)
-                                          (str score (when (= (:agari hand) :tsumo) "⨉3"))
-                                          (str (first score) "+" (second score) "⨉2"))))})]})
+   :children [{:fx/type :label
+               :style {:-fx-font-size 32}
+               :text "Summary"}
+              {:fx/type :label
+               :text (:summary results)}]})
 
 (def glossary
   {:fx/type :v-box
@@ -260,7 +269,7 @@ Dorahyoji ドラ表示 dora indicator
 Agari 和がり generic call for winning a hand
 Agaripai 和了り牌 winning tile
 Ron 栄 win by deal in
-Tsumo 自摸　win by self draw
+Tsumo 自摸 win by self draw
 An 暗 \"dark\" concealed tiles
 Pon ポン call for open triplet
 Chii チイ call for open straight
@@ -270,7 +279,7 @@ Akadora 赤ドラ red fives
 Riichi 立直 special yaku
 Ippatsu 一発 \"one-shot\" win with riichi in 1 turn"}]})
 
-(defn- tile-pane [{:keys [hand kmode akadora]}]
+(defn- tile-pane [{:keys [hand kmode akadora results]}]
   {:fx/type :scroll-pane
    :fit-to-width true
    :content {:fx/type :v-box
@@ -278,11 +287,11 @@ Ippatsu 一発 \"one-shot\" win with riichi in 1 turn"}]})
              :spacing 10
              :children [(assoc hand :fx/type control-buttons)
                         {:fx/type hand-view :hand hand}
-                        {:fx/type keyboard :kmode kmode :akadora akadora :hand hand}
-                        {:fx/type results-view :hand hand}
+                        {:fx/type keyboard :kmode kmode :akadora akadora :hand hand :results results}
+                        {:fx/type results-view :results results}
                         glossary]}})
 
-(defn- root [{:keys [hand keyboard-mode akadora]}]
+(defn- root [{:keys [hand keyboard-mode akadora results]}]
   {:fx/type :stage
    :showing true
    :title "Riichi calculator"
@@ -290,14 +299,22 @@ Ippatsu 一発 \"one-shot\" win with riichi in 1 turn"}]})
            :root {:fx/type tile-pane
                   :hand hand
                   :kmode keyboard-mode
-                  :akadora akadora}}})
+                  :akadora akadora
+                  :results results}}})
 
 (defn map-event-handler [event]
   (case (:event/type event)
-    ::selected-radio (swap! *state assoc :keyboard-mode (:option event))
+    ::set-keyboard-mode (swap! *state assoc :keyboard-mode (:option event))
     ::keyboard-input (keyboard-input (:tile event))
+    ::set-akadora (swap! *state assoc-in [:akadora] (:fx/event event))
     ::set-agari (swap! *state assoc-in [:hand :agari] (:option event))
-    (println "unknown" event)))
+    ::set-agaripai (swap! *state assoc-in [:hand :agaripai] (:tile event))
+    ::advance-wind (advance-wind (:kind event))
+    ::remove-from-hand (remove-from-hand (:path event) (:index event))
+    ::reset (reset! *state initial-state)
+    (println "unknown event:" event))
+  (swap! *state assoc-in [:results] (hand/results (:hand @*state)))
+  (println @*state))
 
 (def renderer
   (fx/create-renderer

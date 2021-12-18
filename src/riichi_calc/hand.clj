@@ -1,6 +1,6 @@
 (ns riichi-calc.hand
   (:gen-class)
-  (:require clojure.set
+  (:require [clojure.string :as s]
             [clojure.math.numeric-tower :as math]
             [clojure.core.match :refer [match]]
             [riichi-calc.group :as group]
@@ -23,6 +23,11 @@
   {:an an :min min :agari agari :agaripai agaripai :bakaze bakaze :jikaze jikaze
    :dorahyouji dorahyouji :riichi riichi :ippatsu ippatsu})
 
+(defn grouped [hand]
+  (update-in hand [:an] group/group-backtrack))
+
+(def grouped-hand (comp grouped hand))
+
 (defn closed? [{:keys [min]}]
   (empty? min))
 
@@ -38,6 +43,19 @@
 (defn expand [hand]
   (apply concat (for [tg (full hand)]
                   (if (:kind tg) (group/expand tg) [tg]))))
+
+(defn expand-an [hand]
+  (update-in hand [:an] (fn [old-an]
+                     (->> old-an
+                          (map #(if (:kind %) (group/expand %) [%]))
+                          (apply concat)
+                          (vec)))))
+
+(defn add-tile [hand tile]
+  (-> hand
+      (expand-an)
+      (update-in [:an] conj tile)
+      (update-in [:an] group/group-backtrack)))
 
 (defn count-yakuhai [{:keys [bakaze jikaze] :as hand}]
   (let [value? (partial group/value? bakaze jikaze)
@@ -59,6 +77,69 @@
 (defn space-left [{:keys [an min]}]
   (- 14 (apply + (count (remove :kind an))
                (map group/virtual-size (filter :kind (concat an min))))))
+
+(defn count-pairs [hand]
+  (count (filter group/couple? (groups hand))))
+
+(defn count-distinct-not-simples [hand]
+  (count (distinct (filter tile/not-simple? (tiles hand)))))
+
+(defn count-terminal-pairs [hand]
+  (count (filter (every-pred group/couple? group/not-simple?) (groups hand))))
+
+(defn count-taatsu
+  [hand]
+  (count (filter group/taatsu? (:an hand))))
+
+;; accurateShanten =
+;; min(8 - 2 * groups
+;;       - min(pairs + taatsu, floor(hand.length/3)-groups)
+;;       - min(1, max(0, pairs + taatsu - (4 - groups))),
+;;     6 - pairs,
+;;     13 - diffTerminals - max(terminalPairs, 1))
+
+(defn regular-shanten
+  "Returns the shanten number of a regular hand."
+  [hand]
+  (let [size (count (expand hand))
+        ngroups (count (remove (some-fn group/couple? group/taatsu?) (groups hand)))
+        npairs (count-pairs hand)
+        ntaatsu (count-taatsu hand)]
+    (println "Size:" size "Groups:" ngroups "Pairs:" npairs "Taatsu:" ntaatsu)
+    (printf "(- 8 (* 2 %d) (min (+ %d %d) (- (quot %d 3) %d)) (min 1 (max 0 (- (+ %d %d) (- 4 %d)))))\n"
+            ngroups npairs ntaatsu size ngroups npairs ntaatsu ngroups)
+    (printf "(- 8 %d (min %d (- %d %d)) (min 1 (max 0 (- %d %d))))\n"
+            (* 2 ngroups) (+ npairs ntaatsu) (quot size 3) ngroups (+ npairs ntaatsu) (- 4 ngroups))
+    (printf "(- 8 %d (min %d %d) (min 1 (max 0 %d)))\n"
+            (* 2 ngroups) (+ npairs ntaatsu) (- (quot size 3) ngroups) (- (+ npairs ntaatsu) (- 4 ngroups)))
+    (printf "(- 8 %d %d %d)\n" (* 2 ngroups) (min (+ npairs ntaatsu) (- (quot size 3) ngroups)) (min 1 (max 0 (- (+ npairs ntaatsu) (- 4 ngroups)))))
+    (- 8
+       (* 2 ngroups)
+       (min (+ npairs ntaatsu) (- (quot size 3) ngroups))
+       (min 1 (max 0 (- (+ npairs ntaatsu) (- 4 ngroups)))))))
+
+(defn chiitoitsu-shanten
+  "Returns the shanten number of a 7 pairs hand."
+  [hand]
+  (- 6 (count-pairs [hand])))
+
+(defn kokushi-shanten
+  "Returns the shanten number of a 13 orphans hand."
+  [hand]
+  (- 13 (count-distinct-not-simples hand) (max 1 (count-terminal-pairs hand))))
+
+(defn shanten
+  "Returns the shanten number of any grouped hand."
+  [hand]
+  (min
+   (regular-shanten hand)
+   (chiitoitsu-shanten hand)
+   (kokushi-shanten hand)))
+
+(defn tenpai?
+  "Returns true if the hand is ready (waiting for the winning tile), else false."
+  [hand]
+  (= (shanten hand) 0))
 
 (defn can-add-tile? [hand {:keys [red] :as tile}]
   (and (> (space-left hand) 0)
@@ -123,6 +204,19 @@
 
 (defn valid? [hand]
   (or (regular? hand) (chiitoitsu? hand) (kokushi-musou? hand)))
+
+(defn ukeire
+  "Brute force ukeire: build a new hand with a tile added and recompute it's shanten.
+   If the shanten is -1 that tile is a winning one."
+  [hand]
+  (let [tiles (expand hand)]
+    (->> tile/all-34-tiles
+         (filter #(< (tile/min-distance tiles %) 2))  ;; for each tile near one in the hand
+         (map #(hash-map :tile % :hand (add-tile hand %)))  ;; build a hand with tile
+         (filter #(= (shanten (:hand %)) -1))  ;; check it's shanten
+         (filter #(valid? (:hand %)))  ;; check if it's a valid hand
+         (map :tile)  ;; get back the added tiles
+         (set))))  ;; put them in a set
 
 (defn tanyao? [{:keys [an]}]
   (every? group/simple? an))
@@ -298,9 +392,10 @@
   (empty? (dissoc yakus :dora :redfive)))
 
 (defn hans [yakus]
-  (if (some #(= :yakuman %) (vals yakus))
-    :yakuman
-    (apply + (vals yakus))))
+  (let [yakuman-count (count (filter #{:yakuman} (vals yakus)))]
+    (if (> yakuman-count 0)
+      {:yakuman yakuman-count}
+      {:regular (apply + (vals yakus))})))
 
 (defn round-up-to [to number]
   (* to (inc (quot (dec number) to))))
@@ -322,108 +417,42 @@
                          (partial group/value? bakaze jikaze)) hand) (+ 2)
        (contains? #{:kanchan :penchan :tanki} (machi hand)) (+ 2)))))
 
-(defn limit-hands [han]
-  (case han
+(defn limit-hands [{:keys [yakuman regular]}]
+  (case regular
     5        2000
     (6 7)    3000
     (8 9 10) 4000
     (11 12)  6000
-    :yakuman 8000
-    (when (> han 12) 8000)))
+    nil      (* yakuman 8000)
+    (when (> regular 12) 8000)))
 
-(comment
-  (defn ron-score [han fu]
-    (case han
-      1 (case fu
-          30  [1500 1000]
-          40  [2000 1300]
-          50  [2400 1600]
-          60  [2900 2000]
-          70  [3400 2300]
-          80  [3900 2600]
-          90  [4400 2900]
-          100 [4800 3200]
-          110 [5300 3600])
-      2 (case fu
-          25 [2400 1600]
-          30 [2900 2000]
-          40 [3900 2600]
-          50 [4800 3200]
-          60 [5800 3900]
-          70 [6800 4500]
-          80 [7700 5200]
-          90 [8700 5800]
-          100 [9600 6400]
-          110 [10600 7100])
-      3 (case fu
-          25 [4800 3200]
-          30 [5800 3900]
-          40 [7700 5200]
-          50 [9600 6400]
-          60 [11600 7700]
-          (when (> fu 60) [12000 8000]))
-      4 (case fu
-          25 [9600 6400]
-          30 [11600 7700]
-          (when (> fu 30) [12000 8000]))
-      [(* 6 (limit-hands han)) (* 4 (limit-hands han))]))
-
-  (defn tsumo-score [han fu]
-    (case han
-      1 (case fu
-          30 [1500 1100]
-          40 [2100 1500]
-          50 [2400 1600]
-          60 [3000 2000]
-          70 [3600 2400]
-          80 [3900 2700]
-          90 [4500 3100]
-          100 [4800 3200]
-          110 [5400 3600])
-      2 (case fu
-          20 [2100 1500]
-          30 [3000 2000]
-          40 [3900 2700]
-          50 [4800 3200]
-          60 [6000 4000]
-          70 [6900 4700]
-          80 [7800 5200]
-          90 [8700 5900]
-          100 [9600 6400]
-          110 [10800 72000])
-      3 (case fu
-          20 [3900 2700]
-          25 [4800 3200]
-          30 [6000 4000]
-          40 [7800 5200]
-          50 [9600 6400]
-          60 [11700 7900]
-          (when (> fu 60) [12000 8000]))
-      4 (case fu
-          20 [7800 5200]
-          25 [9600 6400]
-          30 [11700 7900]
-          (when (> fu 30) [12000 8000]))
-      [(* 6 (limit-hands han)) (* 4 (limit-hands han))])))
-
-(defn basic-points [han fu]
+(defn basic-points [{:keys [yakuman regular] :as han} fu]
   (cond
-    (keyword? han) (limit-hands han)
-    (<= 1 han 4) (* fu (math/expt 2 (+ 2 han)))
-    (> han 4) (limit-hands han)))
+    (some? yakuman) (limit-hands han)
+    (<= 1 regular 4) (* fu (math/expt 2 (+ 2 regular)))
+    (> regular 4) (limit-hands han)))
 
 (defn non-dealer-tsumo [han fu]
-  (let [basic (basic-points han fu)]
-    [(round-up-to 100 (* 2 basic)) (round-up-to 100 basic)]))
+  (let [basic (basic-points han fu)
+        dealer-pay (round-up-to 100 (* 2 basic))
+        non-dealer-pay (round-up-to 100 basic)]
+    {:dealer-pay dealer-pay :non-dealer-pay non-dealer-pay}))
 
 (defn dealer-tsumo [han fu]
-  (round-up-to 100 (* 2 (basic-points han fu))))
+  {:everyone-pay (round-up-to 100 (* 2 (basic-points han fu)))})
 
 (defn dealer-ron [han fu]
-  (round-up-to 100 (* 6 (basic-points han fu))))
+  {:everyone-pay (round-up-to 100 (* 6 (basic-points han fu)))})
 
 (defn non-dealer-ron [han fu]
-  (round-up-to 100 (* 4 (basic-points han fu))))
+  {:everyone-pay (round-up-to 100 (* 4 (basic-points han fu)))})
+
+(defn score [{:keys [jikaze agari]} han fu]
+  (match [jikaze agari]
+    [:east   :ron] (dealer-ron han fu)
+    [_       :ron] (non-dealer-ron han fu)
+    [:east :tsumo] (dealer-tsumo han fu)
+    [_     :tsumo] (non-dealer-tsumo han fu)))
 
 (comment
   (for [[han fu] [[1 30] [2 30] [3 30] [4 30] [4 50]]]
@@ -474,24 +503,53 @@
               (mapv + scores [60 30 0 0])
               (mapv + scores [120 60 0 0]))))
 
-(defn hand-summary [hand]
+(defn string-of-score [{:keys [everyone-pay dealer-pay non-dealer-pay]}]
   (cond
-    (> (space-left hand) 0) {:invalid "Please enter hand tiles"}
-    (nil? (:agaripai hand)) {:invalid "Please choose agaripai (winning tile)"}
-    :else (let [grouped (update-in hand [:an] group/group-hand)]
-            (if (not (valid? grouped))
-              {:invalid "Invalid hand"}
-              (let [yakus (list-yakus grouped)]
-                (if (no-yaku? yakus)
-                  {:invalid "No yaku!"}
-                  (let [han (hans yakus)
-                        fu (minipoints grouped)
-                        score (match [(:jikaze hand) (:agari hand)]
-                                [:east :ron] (dealer-ron han fu)
-                                [_ :ron] (non-dealer-ron han fu)
-                                [:east :tsumo] (dealer-tsumo han fu)
-                                [_ :tsumo] (non-dealer-tsumo han fu))]
-                    {:yakus yakus :han han :fu fu :score score})))))))
+    (some? everyone-pay) (str everyone-pay "⨉3")
+    (every? some? [dealer-pay non-dealer-pay]) (str dealer-pay "+" non-dealer-pay "⨉2")))
+
+(defn string-of-yakus [yakus]
+  (let [yakumans (filter #(= :yakuman (val %)) yakus)]
+    (s/join "\n" (map (fn [yaku]
+                        (let [yname (s/capitalize (name (key yaku)))
+                              yval (if (integer? (val yaku))
+                                     (val yaku)
+                                     (s/capitalize (name (val yaku))))]
+                          (str "★ " yname ": " yval)))
+                      (if (empty? yakumans) yakus yakumans)))))
+
+(defn string-of-hans [{:keys [yakuman regular]}]
+  (cond
+    (some? yakuman) (str (case yakuman 1 "", 2 "Double ", 3 "Triple ") "Yakuman")
+    (some? regular) (str regular)))
+
+(defn results [hand]
+  (let [gh (grouped hand)]
+    (cond
+      (> (space-left gh) 1) {:type :incomplete
+                             :summary "Please enter at least 13 tiles"}
+      (tenpai? gh) (let [uke (ukeire gh)]
+                     {:type :tenpai
+                      :summary (str "Tenpai! Please choose agaripai (winning tile).\nUkeire: "
+                                    (mapv tile/tile-name uke))
+                      :ukeire uke})
+      (nil? (:agaripai gh)) {:type :agaripai
+                             :summary "Please choose agaripai (winning tile)."}
+      (not (valid? gh)) (let [shan (shanten gh)]
+                          {:type :invalid
+                           :summary (str "Invalid hand. Shanten: " shan)
+                           :shanten shan})
+      :else (let [yakus (list-yakus gh)]
+              (if (no-yaku? yakus)
+                {:type :no-yaku :summary "No yaku!"}
+                (let [han (hans yakus)
+                      fu (minipoints gh)
+                      score (score gh han fu)]
+                  {:type :winning
+                   :summary (str "Winning hand!\nYakus:\n" (string-of-yakus yakus)
+                                 "\nHan: " (string-of-hans han) " Fu: " fu
+                                 "\nScore: " (string-of-score score))
+                   :yakus yakus :han han :fu fu :score score :agari (:agari gh)}))))))
 
 (defn to-string [{:keys [an min]}]
   (str "{:an " (apply str
