@@ -2,6 +2,9 @@
   (:gen-class))
 
 
+(defrecord Tile [seed value red])
+
+
 (defn tile
   ([seed value red]
    (when (case seed
@@ -9,7 +12,7 @@
            :dragon (contains? #{:white :green :red} value)
            :wind (contains? #{:east :south :west :north} value)
            false)
-     {:seed seed :value value :red red}))
+     (Tile. seed value red)))
   ([seed value] (tile seed value false)))
 (defn man [value & {:keys [red] :or {red false}}] (tile :man value red))
 (defn sou [value & {:keys [red] :or {red false}}] (tile :sou value red))
@@ -208,6 +211,9 @@
     :pin (str "Pin" value (when red "-Dora"))
     :wind (wind-name value)
     :dragon (dragon-name value)))
+
+(defmethod print-method Tile [tile ^java.io.Writer w]
+  (.write w (tile-name tile)))
 
 (defn url-from-name [name]
   (str "file:resources/tiles/Export/Regular/" name ".png"))
