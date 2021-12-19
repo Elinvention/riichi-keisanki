@@ -3,6 +3,8 @@
   (:require clojure.set [riichi-calc.tile :as tile]))
 
 
+(defrecord Group [tiles kind seed value red])
+
 (defn group 
   ([[{:keys [seed value]} & _ :as tiles]]
    (let [red (some? (some tile/redfive? tiles))]
@@ -21,7 +23,7 @@
                 :dragon (and (not= kind :straight) (contains? #{:white :green :red} value))
                 :wind (and (not= kind :straight) (contains? #{:east :south :west :north} value))
                 false))
-     {:tiles (vec tiles) :kind kind :seed seed :value value :red red})))
+     (Group. tiles kind seed value red))))
 
 (defn group? [group]
   (contains? #{:couple :tris :quad :straight} (:kind group)))
@@ -55,6 +57,9 @@
 
 (defn to-string [group]
   (str "[" (apply str (map tile/tile-name (expand group))) "]"))
+
+(defmethod print-method Group [group ^java.io.Writer w]
+  (.write w (to-string group)))
 
 (defn non-couple? [group]
   ((some-fn straight? tris? quad?) group))
@@ -138,8 +143,7 @@
        (vec (concat grouped groups))
        hand)))
   ([visited not-visited depth]
-   (println "group-backtrack" (map #(if (:kind %) (to-string %) (tile/tile-name %)) visited)
-            (map tile/tile-name not-visited) depth)
+   (println "group-backtrack" visited not-visited depth)
    (letfn
     [(try-consecutive
        [n]
