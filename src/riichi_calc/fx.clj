@@ -40,7 +40,7 @@
                   (when (some #{tile} (hand/expand hand))
                     (swap! *state assoc-in [:hand :agaripai] tile))))
     (when (= (hand/space-left hand) 2)
-      (swap! *state assoc-in [:keyboard-mode] :agaripai))))
+      (swap! *state assoc :keyboard-mode :agaripai))))
 
 (defn remove-from-hand [path index]
   (swap! *state update-in [:hand path]
@@ -236,11 +236,11 @@
               {:fx/type :check-box
                :text "Riichi"
                :selected riichi
-               :on-selected-changed (fn [selected] (swap! *state assoc-in [:hand :riichi] selected))}
+               :on-selected-changed {:event/type ::extra-yaku :yaku :riichi}}
               {:fx/type :check-box
                :text "Ippatsu"
                :selected ippatsu
-               :on-selected-changed (fn [selected] (swap! *state assoc-in [:hand :ippatsu] selected))
+               :on-selected-changed {:event/type ::extra-yaku :yaku :ippatsu}
                :disable (not riichi)}
               {:fx/type :button
                :text "Reset"
@@ -306,14 +306,15 @@ Ippatsu 一発 \"one-shot\" win with riichi in 1 turn"}]})
   (case (:event/type event)
     ::set-keyboard-mode (swap! *state assoc :keyboard-mode (:option event))
     ::keyboard-input (keyboard-input (:tile event))
-    ::set-akadora (swap! *state assoc-in [:akadora] (:fx/event event))
+    ::set-akadora (swap! *state assoc :akadora (:fx/event event))
     ::set-agari (swap! *state assoc-in [:hand :agari] (:option event))
     ::set-agaripai (swap! *state assoc-in [:hand :agaripai] (:tile event))
     ::advance-wind (advance-wind (:kind event))
     ::remove-from-hand (remove-from-hand (:path event) (:index event))
     ::reset (reset! *state initial-state)
+    ::extra-yaku (swap! *state assoc-in [:hand (:yaku event)] (:fx/event event))
     (println "unknown event:" event))
-  (swap! *state assoc-in [:results] (hand/results (:hand @*state)))
+  (swap! *state assoc :results (hand/results (:hand @*state)))
   (println @*state))
 
 (def renderer
