@@ -128,7 +128,7 @@
 
 (defn taatsu?
   "Returns true if 2 tiles make a proto-run (like 45 or 46) else false"
-  [[tile1 tile2 :as tiles]]
+  [[tile1 tile2 & _ :as tiles]]
   (and (= 2 (count tiles))
        (apply = (map :seed tiles))
        (every? numeral? tiles)
