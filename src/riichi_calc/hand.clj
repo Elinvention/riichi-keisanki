@@ -437,10 +437,10 @@
   {:everyone-pay (round-up-to 100 (* 2 (basic-points han fu)))})
 
 (defn dealer-ron [han fu]
-  {:everyone-pay (round-up-to 100 (* 6 (basic-points han fu)))})
+  {:ron-pay (round-up-to 100 (* 6 (basic-points han fu)))})
 
 (defn non-dealer-ron [han fu]
-  {:everyone-pay (round-up-to 100 (* 4 (basic-points han fu)))})
+  {:ron-pay (round-up-to 100 (* 4 (basic-points han fu)))})
 
 (defn score [{:keys [jikaze agari]} han fu]
   (match [jikaze agari]
@@ -501,7 +501,8 @@
 (defn string-of-score [{:keys [everyone-pay dealer-pay non-dealer-pay]}]
   (cond
     (some? everyone-pay) (str everyone-pay "⨉3")
-    (every? some? [dealer-pay non-dealer-pay]) (str dealer-pay "+" non-dealer-pay "⨉2")))
+    (every? some? [dealer-pay non-dealer-pay]) (str dealer-pay "+" non-dealer-pay "⨉2")
+    (some? ron-pay) (str ron-pay)))
 
 (defn string-of-yakus [yakus]
   (let [yakumans (filter #(= :yakuman (val %)) yakus)]
