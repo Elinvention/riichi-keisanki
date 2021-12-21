@@ -23,7 +23,7 @@
                 :dragon (and (not= kind :straight) (contains? #{:white :green :red} value))
                 :wind (and (not= kind :straight) (contains? #{:east :south :west :north} value))
                 false))
-     (Group. tiles kind seed value red))))
+     (Group. (vec tiles) kind seed value red))))
 
 (defn group? [group]
   (contains? #{:couple :tris :quad :straight} (:kind group)))
