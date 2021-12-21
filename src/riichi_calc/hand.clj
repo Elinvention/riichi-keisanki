@@ -381,7 +381,7 @@
       (junchan-taiyao? hand) (assoc :junchan-taiyao 3)
       (ryanpeikou? hand) (assoc :ryanpeikou 3)
       riichi (assoc :riichi 1)
-      ippatsu (assoc :ippatsu 1))))
+      (and riichi ippatsu) (assoc :ippatsu 1))))
 
 (defn no-yaku? [yakus]
   (empty? (dissoc yakus :dora :redfive)))
