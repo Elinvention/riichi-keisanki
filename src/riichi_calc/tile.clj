@@ -237,3 +237,5 @@
               (if (= 5 (:value tile))
                 [tile (redfive (:seed tile))]
                 tile)))))
+
+(def kokushi-tiles (set (filter (some-fn terminal? honor?) all-34-tiles)))

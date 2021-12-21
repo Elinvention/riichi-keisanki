@@ -189,13 +189,8 @@
 (defn chiitoitsu? [{:keys [an min]}]
   (and (empty? min) (= (count an) 7) (every? group/couple? an)))
 
-(def kokushi-tiles #{(tile/man 1) (tile/man 9) (tile/sou 1) (tile/sou 9)
-                    (tile/pin 1) (tile/pin 9) (tile/wind :east)
-                    (tile/wind :south) (tile/wind :west) (tile/wind :north)
-                    (tile/dragon :white) (tile/dragon :green) (tile/dragon :red)})
-
 (defn kokushi-musou? [{:keys [an min]}]
-  (and (empty? min) (= (count an) 14) (every? #(some #{%} an) kokushi-tiles)))
+  (and (empty? min) (= (count an) 14) (every? #(some #{%} an) tile/kokushi-tiles)))
 
 (defn regular? [{:keys [an min]}]
   (and (= (+ (count an) (count min)) 5)
