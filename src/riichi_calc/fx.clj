@@ -116,7 +116,7 @@
     :dorahyouji (hand/can-add-dorahyouji? hand tile)
     :agaripai (if (> (hand/space-left hand) 0)
                 (if ukeire (contains? ukeire tile) (hand/can-add-tile? hand tile))
-                (some #{tile} (hand/expand-an hand)))))
+                (some #{tile} (hand/expand-groups (:an hand))))))
 
 (defn- keyboard-key-button [{:keys [tile disable]}]
   {:fx/type :button

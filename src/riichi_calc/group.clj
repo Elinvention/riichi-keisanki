@@ -124,55 +124,6 @@
 (defn in? [tile group]
   (>= (.indexOf (expand group) tile) 0))
 
-(defn seq-sub
-  "Subtracts a sequence s2 from a sequence s1 where s2 is a subset of s1.
-  For example (seq-sub [1 1 2 3] [1 2]) => (1 3)"
-  [s1 s2]
-  (let [f1 (frequencies s1)
-        f2 (frequencies s2)
-        m (merge-with - f1 f2)
-        r (mapcat #(repeat (second %) (first %)) m)]
-    r))
-
-(defn group-backtrack
-  ([hand]
-   (let [hand (tile/sort-tiles hand)
-         tiles (vec (remove :kind hand))
-         groups (vec (filter :kind hand))]
-     (if-let [grouped (group-backtrack [] tiles 0)]
-       (vec (concat grouped groups))
-       hand)))
-  ([visited not-visited depth]
-   (println "group-backtrack" visited not-visited depth)
-   (letfn
-    [(try-consecutive
-       [n]
-       (let [taken (take n not-visited)]
-         (when (= (count taken) n)
-           (when-let [new-group (group taken)]
-             (group-backtrack (conj visited new-group)
-                              (vec (nthrest not-visited n))
-                              (inc depth))))))
-     (try-straight
-       []
-       (let [tiles-deduped (take 3 (dedupe not-visited))]
-         (when-let [group-deduped (group tiles-deduped)]
-           (group-backtrack (conj visited group-deduped)
-                            (vec (seq-sub not-visited tiles-deduped))
-                            (inc depth)))))
-     (try-skip
-       []
-       (group-backtrack (conj visited (first not-visited))
-                        (rest not-visited)
-                        (inc depth)))]
-     (case (count not-visited)
-       0 visited
-       1 (vec (concat visited not-visited))
-       2 (or (try-consecutive 2) (vec (concat visited not-visited)))
-       3 (or (try-consecutive 3) (try-straight) (try-consecutive 2) (try-skip))
-       (or (try-consecutive 4) (try-consecutive 3)
-           (try-straight) (try-consecutive 2) (try-skip))))))
-
 (defn fu [open group]
   (cond
     (tris? group) (if open

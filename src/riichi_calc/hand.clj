@@ -23,10 +23,10 @@
   {:an an :min min :agari agari :agaripai agaripai :bakaze bakaze :jikaze jikaze
    :dorahyouji dorahyouji :riichi riichi :ippatsu ippatsu})
 
-(defn grouped [hand]
-  (update-in hand [:an] group/group-backtrack))
-
-(def grouped-hand (comp grouped hand))
+(defn to-string [{:keys [an min]}]
+  (if (empty? min)
+    (str "Closed hand: <" (apply pr-str an) ">")
+    (str "Open hand: <" (apply pr-str an) "> + <" (apply pr-str min) ">")))
 
 (defn closed? [{:keys [min]}]
   (empty? min))
@@ -40,22 +40,14 @@
 (defn tiles [hand]
   (remove :kind (full hand)))
 
+(defn expand-groups [tiles-groups]
+  (->> tiles-groups
+       (map #(if (:kind %) (group/expand %) [%]))
+       (apply concat)
+       (vec)))
+
 (defn expand [hand]
-  (apply concat (for [tg (full hand)]
-                  (if (:kind tg) (group/expand tg) [tg]))))
-
-(defn expand-an [hand]
-  (update-in hand [:an] (fn [old-an]
-                     (->> old-an
-                          (map #(if (:kind %) (group/expand %) [%]))
-                          (apply concat)
-                          (vec)))))
-
-(defn add-tile [hand tile]
-  (-> hand
-      (expand-an)
-      (update-in [:an] conj tile)
-      (update-in [:an] group/group-backtrack)))
+  (expand-groups (full hand)))
 
 (defn count-yakuhai [{:keys [bakaze jikaze] :as hand}]
   (let [value? (partial group/value? bakaze jikaze)
@@ -105,14 +97,6 @@
         ngroups (count (remove (some-fn group/couple? group/taatsu?) (groups hand)))
         npairs (count-pairs hand)
         ntaatsu (count-taatsu hand)]
-    (println "Size:" size "Groups:" ngroups "Pairs:" npairs "Taatsu:" ntaatsu)
-    (printf "(- 8 (* 2 %d) (min (+ %d %d) (- (quot %d 3) %d)) (min 1 (max 0 (- (+ %d %d) (- 4 %d)))))\n"
-            ngroups npairs ntaatsu size ngroups npairs ntaatsu ngroups)
-    (printf "(- 8 %d (min %d (- %d %d)) (min 1 (max 0 (- %d %d))))\n"
-            (* 2 ngroups) (+ npairs ntaatsu) (quot size 3) ngroups (+ npairs ntaatsu) (- 4 ngroups))
-    (printf "(- 8 %d (min %d %d) (min 1 (max 0 %d)))\n"
-            (* 2 ngroups) (+ npairs ntaatsu) (- (quot size 3) ngroups) (- (+ npairs ntaatsu) (- 4 ngroups)))
-    (printf "(- 8 %d %d %d)\n" (* 2 ngroups) (min (+ npairs ntaatsu) (- (quot size 3) ngroups)) (min 1 (max 0 (- (+ npairs ntaatsu) (- 4 ngroups)))))
     (- 8
        (* 2 ngroups)
        (min (+ npairs ntaatsu) (- (quot size 3) ngroups))
@@ -199,19 +183,6 @@
 
 (defn valid? [hand]
   (or (regular? hand) (chiitoitsu? hand) (kokushi-musou? hand)))
-
-(defn ukeire
-  "Brute force ukeire: build a new hand with a tile added and recompute it's shanten.
-   If the shanten is -1 that tile is a winning one."
-  [hand]
-  (let [tiles (expand hand)]
-    (->> tile/all-34-tiles
-         (filter #(< (tile/min-distance tiles %) 2))  ;; for each tile near one in the hand
-         (map #(hash-map :tile % :hand (add-tile hand %)))  ;; build a hand with tile
-         (filter #(= (shanten (:hand %)) -1))  ;; check it's shanten
-         (filter #(valid? (:hand %)))  ;; check if it's a valid hand
-         (map :tile)  ;; get back the added tiles
-         (set))))  ;; put them in a set
 
 (defn tanyao? [{:keys [an]}]
   (every? group/simple? an))
@@ -498,7 +469,152 @@
               (mapv + scores [60 30 0 0])
               (mapv + scores [120 60 0 0]))))
 
-(defn string-of-score [{:keys [everyone-pay dealer-pay non-dealer-pay]}]
+(defn- seq-sub
+  "Subtracts a sequence s2 from a sequence s1 where s2 is a subset of s1.
+  For example (seq-sub [1 1 2 3] [1 2]) => (1 3)"
+  [s1 s2]
+  (let [f1 (frequencies s1)
+        f2 (frequencies s2)
+        m (merge-with - f1 f2)
+        r (mapcat #(repeat (second %) (first %)) m)]
+    r))
+
+(defn possible-couples [tiles]
+  (let [sum (apply + 0 (map :value (filter tile/numeral? tiles)))]
+    (case (mod sum 3)
+      0 #{3 6 9}
+      1 #{2 5 8}
+      2 #{1 4 7})))
+
+(comment
+  (possible-couples (mapv tile/man [1 1 1 2 2 2 3 3 3 4 4 4 5 5]))
+  (possible-couples (mapv tile/man [1 1 1 2 2 2 3 3 3 4 4 4 6 6]))
+  (possible-couples (mapv tile/man [1 1 1 2 2 2 3 3 3 4 4 4 7 7]))
+  (possible-couples [])
+  )
+
+(defn group-regular-hand
+  ([hand]
+   (when (= (space-left hand) 0)
+     (let [not-visited (vec (remove :kind (:an hand)))
+           visited (vec (filter :kind (:an hand)))]
+       (group-regular-hand hand visited not-visited 0))))
+  ([hand visited not-visited depth]
+   (println "group-regular-hand" visited not-visited depth)
+   (letfn
+    [(try-consecutive
+       [n]
+       (when (or (not= 2 n) (not-any? group/couple? visited))
+         (let [taken (take n not-visited)]
+           (when (= (count taken) n)
+             (when-let [new-group (group/group taken)]
+               (when (not (group/taatsu? new-group))
+                 (group-regular-hand hand
+                                     (conj visited new-group)
+                                     (vec (nthrest not-visited n))
+                                     (inc depth))))))))
+     (try-straight
+       []
+       (let [tiles-deduped (take 3 (dedupe not-visited))]
+         (when (= (count tiles-deduped) 3)
+           (when-let [group-deduped (group/group tiles-deduped)]
+             (group-regular-hand hand
+                                 (conj visited group-deduped)
+                                 (vec (tile/sort-tiles (seq-sub not-visited tiles-deduped)))
+                                 (inc depth))))))]
+     (case (count not-visited)
+       0 (let [new-hand (assoc hand :an visited)] (when (regular? new-hand) new-hand))
+       1 nil
+       2 (try-consecutive 2)
+       (or (try-consecutive 3) (try-straight) (try-consecutive 2))))))
+
+(defn group-chiitoitsu-hand [hand]
+  (when (and (empty? (:min hand)) (= 14 (count (:an hand))))
+    (let [groups (mapv group/group (partition 2 2 (:an hand)))
+          new-hand (assoc hand :an groups)]
+      (when (chiitoitsu? new-hand)
+        new-hand))))
+
+(defn group-kokushi-hand [hand]
+  (when (kokushi-musou? hand)
+    hand))
+
+(defn group-incomplete-hand
+  ([hand]
+   (let [not-visited (vec (remove :kind (:an hand)))
+         visited (vec (filter :kind (:an hand)))]
+     (group-incomplete-hand hand visited not-visited 0)))
+  ([hand visited not-visited depth]
+   (println "group-incomplete-hand" visited not-visited depth)
+   (letfn
+    [(try-consecutive
+       [n]
+       (println "try-consecutive" n depth)
+       (let [taken (take n not-visited)]
+         (when (= (count taken) n)
+           (when-let [new-group (group/group taken)]
+             (group-incomplete-hand hand
+                                    (conj visited new-group)
+                                    (vec (nthrest not-visited n))
+                                    (inc depth))))))
+     (try-straight
+       []
+       (println "try-straight" depth)
+       (let [tiles-deduped (take 3 (dedupe not-visited))]
+         (when (= (count tiles-deduped) 3)
+           (when-let [group-deduped (group/group tiles-deduped)]
+             (group-incomplete-hand hand
+                                    (conj visited group-deduped)
+                                    (vec (tile/sort-tiles (seq-sub not-visited tiles-deduped)))
+                                    (inc depth))))))
+     (try-skip
+       []
+       (println "try-skip" depth)
+       (group-incomplete-hand hand
+                              (conj visited (first not-visited))
+                              (rest not-visited)
+                              (inc depth)))]
+     (case (count not-visited)
+       0 (assoc hand :an visited)
+       1 (assoc hand :an (vec (concat visited not-visited)))
+       2 (or (try-consecutive 2) (assoc hand :an (vec (concat visited not-visited))))
+       (or (try-consecutive 3) (try-straight) (try-consecutive 2) (try-skip))))))
+
+(defn grouped [hand]
+  (let [sorted-hand (update hand :an tile/sort-tiles)]
+    (or (group-kokushi-hand sorted-hand)
+        (group-chiitoitsu-hand sorted-hand)
+        (group-regular-hand sorted-hand)
+        (group-incomplete-hand sorted-hand))))
+
+(comment
+  (let [h (hand :an (conj (mapv tile/man [2 3 4 5 5]) (group/quad (tile/man 1)))
+                :min (mapv group/tris [(tile/dragon :red) (tile/pin 6)]))]
+    (to-string (grouped h)))
+
+  (let [h (hand :an (mapv tile/man [1 1 2 2 4 4 5 5 7 7 8 8 9 9]))]
+    (to-string (grouped h)))
+  )
+
+(def grouped-hand (comp grouped hand))
+
+(defn hand-with-tile [hand tile]
+  (grouped (update hand :an (comp expand-groups conj) tile)))
+
+(defn ukeire
+  "Brute force ukeire: build a new hand with a tile added and recompute it's shanten.
+   If the shanten is -1 that tile is a winning one."
+  [hand]
+  (let [tiles (expand hand)]
+    (->> tile/all-34-tiles
+         (filter #(< (tile/min-distance tiles %) 2))  ;; for each tile near one in the hand
+         (map #(hash-map :tile % :hand (hand-with-tile hand %)))  ;; build a hand with tile
+         (filter #(= (shanten (:hand %)) -1))  ;; check it's shanten
+         (filter #(valid? (:hand %)))  ;; check if it's a valid hand
+         (map :tile)  ;; get back the added tiles
+         (set))))  ;; put them in a set
+
+(defn string-of-score [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]}]
   (cond
     (some? everyone-pay) (str everyone-pay "⨉3")
     (every? some? [dealer-pay non-dealer-pay]) (str dealer-pay "+" non-dealer-pay "⨉2")
@@ -546,18 +662,3 @@
                                  "\nHan: " (string-of-hans han) " Fu: " fu
                                  "\nScore: " (string-of-score score))
                    :yakus yakus :han han :fu fu :score score :agari (:agari gh)}))))))
-
-(defn to-string [{:keys [an min]}]
-  (str "{:an " (apply str
-                      (map tile/tile-name (remove :kind an))
-                      (map group/to-string (filter :kind an)))
-       " :min " (apply str (map group/to-string min))))
-
-(comment
-  {:start-points 25000 :target-points 30000
-   :players [{:name "Elia" :points 25000 :score 0 :seat :east}
-             {:name "Giangi" :points 25000 :score 0 :seat :west}
-             {:name "Lorenzo" :points 25000 :score 0 :seat :south}
-             {:name "Luca" :points 25000 :score 0 :seat :north}]
-   :rounds :east :turns []
-   :uma [20 10] :oka 20000})
