@@ -7,21 +7,18 @@
             [riichi-calc.tile :as tile]))
 
 
-(comment {:an []   ;; from 暗 concealed tiles
-          :min []  ;; from 明 open tiles
-          :agari :ron   ;; from 和了り can be :ron or :tsumo
-          :agaripai nil ;; from 和了り牌
-          :bakaze :east ;; from 場風 
-          :jikaze :east ;; from 自風
-          :dorahyouji [] ;; from ドラ表示
-          :riichi false ;; from 立直
-          })
-
-(defn hand [& {:keys [an min agari agaripai bakaze jikaze dorahyouji riichi ippatsu]
-               :or {an [], min [], agari :tsumo, bakaze :east, jikaze :east,
-                    dorahyouji [] riichi false ippatsu false}}]
-  {:an an :min min :agari agari :agaripai agaripai :bakaze bakaze :jikaze jikaze
-   :dorahyouji dorahyouji :riichi riichi :ippatsu ippatsu})
+(defn hand
+  [& {:keys [an min agari agaripai bakaze jikaze dorahyouji extra-yaku]
+               :or {an [], min [], agari :tsumo, bakaze :east, jikaze :east
+                    dorahyouji [] extra-yaku #{}}}]
+  {:an an                 ;; from 暗 concealed tiles
+   :min min               ;; from 明 open tiles
+   :agari agari           ;; from 和了り can be :ron or :tsumo
+   :agaripai agaripai     ;; from 和了り牌
+   :bakaze bakaze         ;; from 場風 
+   :jikaze jikaze         ;; from 自風
+   :dorahyouji dorahyouji ;; from ドラ表示
+   :extra-yaku extra-yaku})
 
 (defn to-string [{:keys [an min]}]
   (if (empty? min)
@@ -152,8 +149,13 @@
        (or (not red) (= 0 (tile/count-exact tile dorahyouji)))))
 
 (defn machi
-  "From 待ち, wait. Returns :tanki (pair wait), :shanpon (dual pon wait)
-   :penchan (edge wait), :ryanmen (side wait) or :kanchan (closed wait)"
+  "From 待ち, wait. Returns one of:
+   - :tanki (pair wait)
+   - :shanpon (dual pon wait)
+   - :penchan (edge wait)
+   - :ryanmen (side wait)
+   - :kanchan (closed wait)
+   - nil (incomplete hand or wrong agaripai)"
   [{:keys [agaripai] :as hand}]
   (when-let [agari-group (first (filter (partial group/in? agaripai) (groups hand)))]
     (case (:kind agari-group)
@@ -168,71 +170,105 @@
 
 
 ; Yaku yeeeee
-(defn chiitoitsu? [{:keys [an min]}]
+(defn chiitoitsu?
+  "This hand is composed of seven pairs."
+  [{:keys [an min]}]
   (and (empty? min) (= (count an) 7) (every? group/couple? an)))
 
-(defn kokushi-musou? [{:keys [an min]}]
+(defn kokushi-musou?
+  "This hand has one of each of the 13 different terminal and honor tiles plus
+   one extra terminal or honour tile."
+  [{:keys [an min]}]
   (and (empty? min) (= (count an) 14) (every? #(some #{%} an) tile/kokushi-tiles)))
 
-(defn regular? [{:keys [an min]}]
+(defn regular? 
+  "Returns true if the hand is made of 4 groups and a pair."
+  [{:keys [an min]}]
   (and (= (+ (count an) (count min)) 5)
        (= (count (filter group/couple? an)) 1)
        (= (count (filter group/non-couple? (concat an min))) 4)))
 
-(defn valid? [hand]
+(defn valid?
+  "Returns true if the hand is valid (a regular, chiitoitsu or kokushi hand)."
+  [hand]
   (or (regular? hand) (chiitoitsu? hand) (kokushi-musou? hand)))
 
-(defn tanyao? [{:keys [an]}]
+(defn tanyao?
+  "A hand composed of only simple (numerals 2-8) tiles."
+  [{:keys [an]}]
   (every? group/simple? an))
 
-(defn chinroutou? [hand]
+(defn chinroutou?
+  "Every group of tiles is composed of terminal tiles."
+  [hand]
   (every? group/terminal? (full hand)))
 
-(defn chantaiyao? [hand]
+(defn chantaiyao?
+  "All tile groups contain at least 1 terminal or honor."
+  [hand]
   (every? (some-fn group/terminal? group/edge? group/honor?) (full hand)))
 
-(defn honroutou? [hand]
+(defn honroutou?
+  "The hand is composed of nothing but all terminals and honors."
+  [hand]
   (every? (some-fn group/terminal? group/honor?) (full hand)))
 
-(defn junchan-taiyao? [hand]
+(defn junchan-taiyao?
+  "All sets contain at least one terminal."
+  [hand]
   (every? (some-fn group/terminal? group/edge?) (full hand)))
 
-(defn sanshoku-doujin? [hand]
+(defn sanshoku-doujun?
+  "Three sequences have the same number across the three different suits."
+  [hand]
   (let [straights (distinct (filter group/straight? (full hand)))
         values (frequencies (map :value straights))
         seeds (set (map :seed straights))]
     (boolean (and (some #(>= % 3) (vals values)) (= (count seeds) 3)))))
 
-(defn full-flush? [hand]
+(defn chinitsu?
+  "This hand is composed entirely of tiles from only one of the three suits."
+  [hand]
   (let [fhand (full hand)]
     (or (every? group/pin? fhand)
         (every? group/sou? fhand)
         (every? group/man? fhand))))
 
-(defn half-flush? [hand]
-  (and (not (full-flush? hand))
+(defn honitsu?
+  "This is a single suit hand mixed with some honor tiles."
+  [hand]
+  (and (not (chinitsu? hand))
        (let [fhand (full hand)]
          (or (every? (some-fn group/pin? group/honor?) fhand)
              (every? (some-fn group/sou? group/honor?) fhand)
              (every? (some-fn group/man? group/honor?) fhand)))))
 
-(defn iipeikou? [{:keys [an min] :as hand}]
+(defn iipeikou?
+  "This hand includes two identical sequences."
+  [{:keys [an min] :as hand}]
   (and (regular? hand) (empty? min)
        (let [sequences (filter group/straight? an)]
          (= 1 (- (count sequences)
                  (count (dedupe (map #(dissoc % :red) sequences))))))))
 
-(defn ryanpeikou? [{:keys [an min] :as hand}]
+(defn ryanpeikou?
+  "This hand has two sets of \"iipeikou\"."
+  [{:keys [an min] :as hand}]
   (and (regular? hand) (empty? min)
        (let [sequences (filter group/straight? an)]
          (= 2 (- (count sequences) (count (dedupe sequences)))))))
 
-(defn pinfu? [{:keys [an min bakaze jikaze] :as hand}]
+(defn pinfu?
+  "Typically known as \"all sequences\", this is a hand that does not gain fu
+   based on composition, other than that of a closed ron."
+  [{:keys [an min bakaze jikaze] :as hand}]
   (and (empty? min) (regular? hand) (= (machi hand) :ryanmen)
        (not (some (partial group/value? bakaze jikaze) an))
        (= 4 (count (filter group/straight? an)))))
 
-(defn ittsu? [hand]
+(defn ittsu?
+  "This hand has a complete sequence of 1 through 9 of a single suit."
+  [hand]
   (let [straights (distinct (filter group/straight? (full hand)))
         dominant-seed (first (keys (max-key val (frequencies (map :seed straights)))))
         candidate (filter (every-pred
@@ -241,10 +277,16 @@
         values (set (map :value candidate))]
     (boolean (and (contains? values 1) (contains? values 4) (contains? values 7)))))
 
-(defn toitoi? [hand]
+(defn toitoi?
+  "The entire hand is composed of triplets."
+  [hand]
   (= 4 (count (filter group/tris? (full hand)))))
 
-(defn sanankou? [{:keys [an]}]
+(defn sanankou?
+  "The hand includes three groups of triplets (or closed quads) that have been
+   formed without calling any tiles.
+   The fourth group can be an open triplet or sequence."
+  [{:keys [an]}]
   (= 3 (count (filter (some-fn group/tris? group/quad?) an))))
 
 (defn sanshoku-doukou?
@@ -304,7 +346,7 @@
   "A hand consisting of the tiles 1112345678999 in the same suit plus any one
    extra tile of the same suit. "
   [hand]
-  (and (full-flush? hand)
+  (and (chinitsu? hand)
        (let [f (frequencies (map :value (expand hand)))]
          (every? identity (map #(>= (get f %1 0) %2) (range 1 10) [3 1 1 1 1 1 1 1 3])))))
 
