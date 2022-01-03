@@ -355,44 +355,81 @@
   [hand]
   (= 4 (count (filter group/quad? (full hand)))))
 
-(defn list-yakus [{:keys [agari riichi ippatsu] :as hand}]
+(defn extra-yaku? [yaku {:keys [extra-yaku]}]
+  (get extra-yaku yaku false))
+
+(defn ippatsu? [{:keys [extra-yaku]}]
+  (and (some #{:riichi :double-riichi} extra-yaku) (extra-yaku :ippatsu)))
+
+(def closed-yaku-han
+  {:menzen-tsumo    {:fun (fn [{:keys [agari]}] (= agari :tsumo)) :han 1}
+   :iipeikou        {:fun iipeikou? :han 1}
+   :pinfu           {:fun pinfu? :han 1}
+   :ippatsu         {:fun ippatsu? :han 1}
+   :houtei-raoyui   {:fun (partial extra-yaku? :houtei-raoyui) :han 1}
+   :haitei-raoyue   {:fun (partial extra-yaku? :haitei-raoyue) :han 1}
+   :rinshan-kaihou  {:fun (partial extra-yaku? :rinshan-kaihou) :han 1}
+   :chankan         {:fun (partial extra-yaku? :chankan) :han 1}
+   :tanyao          {:fun tanyao? :han 1}
+   :riichi          {:fun (partial extra-yaku? :riichi) :han 1}
+   :chiitoitsu      {:fun chiitoitsu? :han 2}
+   :chantaiyao      {:fun chantaiyao? :han 2}
+   :sanshoku-doujun {:fun sanshoku-doujun? :han 2}
+   :ittsu           {:fun ittsu? :han 2}
+   :toitoi          {:fun toitoi? :han 2}
+   :sanankou        {:fun sanankou? :han 2}
+   :sanshoku-doukou {:fun sanshoku-doukou? :han 2}
+   :sankantsu       {:fun sankantsu? :han 2}
+   :honroutou       {:fun honroutou? :han 2}
+   :shousangen      {:fun shousangen? :han 2}
+   :double-riichi   {:fun (partial extra-yaku? :double-riichi) :han 2}
+   :honitsu         {:fun honitsu? :han 3}
+   :junchan-taiyao  {:fun junchan-taiyao? :han 3}
+   :ryanpeikou      {:fun ryanpeikou? :han 3}
+   :chinitsu        {:fun chinitsu? :han 6}
+   :kokushi-musou   {:fun kokushi-musou? :han :yakuman}
+   :suuankou        {:fun suuankou? :han :yakuman}
+   :daisangen       {:fun daisangen? :han :yakuman}
+   :shousuushii     {:fun shousuushii? :han :yakuman}
+   :daisuushii      {:fun daisuushii? :han :yakuman}
+   :tsuuiisou       {:fun tsuuiisou? :han :yakuman}
+   :chuuren-poutou  {:fun chuuren-poutou? :han :yakuman}
+   :suukantsu       {:fun suukantsu? :han :yakuman}
+   :chinroutou      {:fun chinroutou? :han :yakuman}})
+
+(def opened-yaku-han
+  {:houtei-raoyui   {:fun (partial extra-yaku? :houtei-raoyui) :han 1}
+   :haitei-raoyue   {:fun (partial extra-yaku? :haitei-raoyue) :han 1}
+   :rinshan-kaihou  {:fun (partial extra-yaku? :rinshan-kaihou) :han 1}
+   :chankan         {:fun (partial extra-yaku? :chankan) :han 1}
+   :chantaiyao      {:fun chantaiyao? :han 1}
+   :sanshoku-doujun {:fun sanshoku-doujun? :han 1}
+   :ittsu           {:fun ittsu? :han 1}
+   :toitoi          {:fun toitoi? :han 2}
+   :sanankou        {:fun sanankou? :han 2}
+   :sanshoku-doukou {:fun sanshoku-doukou? :han 2}
+   :sankantsu       {:fun sankantsu? :han 2}
+   :honroutou       {:fun honroutou? :han 2}
+   :shousangen      {:fun shousangen? :han 2}
+   :honitsu         {:fun honitsu? :han 2}
+   :junchan-taiyao  {:fun junchan-taiyao? :han 2}
+   :chinitsu        {:fun chinitsu? :han 5}
+   :daisangen       {:fun daisangen? :han :yakuman}
+   :shousuushii     {:fun shousuushii? :han :yakuman}
+   :daisuushii      {:fun daisuushii? :han :yakuman}
+   :tsuuiisou       {:fun tsuuiisou? :han :yakuman}
+   :suukantsu       {:fun suukantsu? :han :yakuman}
+   :chinroutou      {:fun chinroutou? :han :yakuman}})
+
+(defn list-yakus [hand]
   (let [n-yakuhai (count-yakuhai hand)
         n-redfive (count-redfive hand)
-        n-dora (count-doras hand)]
-    (cond-> {}
+        n-dora (count-doras hand)
+        yaku-map (if (closed?  hand) closed-yaku-han opened-yaku-han)]
+    (cond-> (reduce-kv #(if ((:fun %3) hand) (assoc %1 %2 (:han %3)) %1) {} yaku-map)
       (> n-yakuhai 0) (assoc :yakuhai n-yakuhai)
       (> n-redfive 0) (assoc :redfive n-redfive)
-      (> n-dora 0) (assoc :dora n-dora)
-      (closed? hand) (cond->
-                      (= agari :tsumo) (assoc :menzen-tsumo 1)
-                      (iipeikou? hand) (assoc :iipeikou 1)
-                      (pinfu? hand) (assoc :pinfu 1)
-                      (chiitoitsu? hand) (assoc :chiitoitsu 2)
-                      (kokushi-musou? hand) (assoc :kokushi-musou :yakuman)
-                      (suuankou? hand) (assoc :suuankou :yakuman))
-      (daisangen? hand) (assoc :daisangen :yakuman)
-      (shousuushii? hand) (assoc :shousuushii :yakuman)
-      (daisuushii? hand) (assoc :daisuushii :yakuman)
-      (tsuuiisou? hand) (assoc :tsuuiisou :yakuman)
-      (chuuren-poutou? hand) (assoc :chuuren-poutou :yakuman)
-      (suukantsu? hand) (assoc :suukantsu :yakuman)
-      (full-flush? hand) (assoc :chinitsu (if (closed? hand) 6 5))
-      (half-flush? hand) (assoc :honitsu (if (closed? hand) 3 2))
-      (tanyao? hand) (assoc :tanyao 1)
-      (chinroutou? hand) (assoc :chinroutou :yakuman)
-      (chantaiyao? hand) (assoc :chantaiyao (if (closed? hand) 2 1))
-      (sanshoku-doujin? hand) (assoc :sanshoku-doujin (if (closed? hand) 2 1))
-      (ittsu? hand) (assoc :ittsu (if (closed? hand) 2 1))
-      (toitoi? hand) (assoc :toitoi (if (closed? hand) 2 1))
-      (sanankou? hand) (assoc :sanankou 2)
-      (sanshoku-doukou? hand) (assoc :sanshoku-doukou 2)
-      (sankantsu? hand) (assoc :sankantsu 2)
-      (honroutou? hand) (assoc :honroutou 2)
-      (shousangen? hand) (assoc :shousangen 2)
-      (junchan-taiyao? hand) (assoc :junchan-taiyao 3)
-      (ryanpeikou? hand) (assoc :ryanpeikou 3)
-      riichi (assoc :riichi 1)
-      (and riichi ippatsu) (assoc :ippatsu 1))))
+      (> n-dora 0) (assoc :dora n-dora))))
 
 (defn no-yaku? [yakus]
   (empty? (dissoc yakus :dora :redfive)))
