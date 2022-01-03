@@ -172,6 +172,9 @@
 (defn sort-tiles [tiles]
   (into [] (sort-by tile-key tiles)))
 
+(defn numeral-next [value]
+  (inc (mod value 9)))
+
 (defn wind-next [wind]
   (case wind
     :east :south
@@ -187,7 +190,7 @@
 
 (defn tile-next [{:keys [seed value] :as mtile}]
   (cond
-    (numeral? mtile) (tile seed (inc (mod value 9)))
+    (numeral? mtile) (tile seed (numeral-next value))
     (dragon? mtile) (tile seed (dragon-next value))
     (wind? mtile) (tile seed (wind-next value))))
 
@@ -231,7 +234,7 @@
     (for [seed [:dragon] value [:white :green :red]]
       (tile seed value)))))
 
-(def all-37-tiles
+(def all-34-tiles-with-redfives
   (vec
    (flatten (for [tile all-34-tiles]
               (if (= 5 (:value tile))
