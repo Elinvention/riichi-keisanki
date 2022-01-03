@@ -9,6 +9,7 @@
 (def initial-state {:hand (hand/hand)
                     :keyboard-mode :an
                     :akadora false
+                    :theme :regular
                     :results (hand/results (hand/hand))})
 
 (def *state (atom initial-state))
@@ -50,57 +51,64 @@
   (swap! *state update-in [:hand wind] tile/wind-next))
 
 
-(def front-tile
+(defn front-tile [{:keys [theme]}]
   {:fx/type :image-view
-   :image {:url "file:resources/tiles/Export/Regular/Front.png"
+   :image {:url (tile/url-from-name theme "Front")
            :requested-width 36
            :preserve-ratio true
            :background-loading true
            :smooth true}})
 
-(def back-tile (assoc-in front-tile [:image :url] "file:resources/tiles/Export/Regular/Back.png"))
+(defn back-tile [{:keys [theme]}]
+  (assoc-in (front-tile {:theme theme}) [:image :url] (tile/url-from-name theme "Back")))
 
-(defn- tile-view [{:keys [tile on-mouse-clicked rotate bgcolor]
+(defn- tile-view [{:keys [tile on-mouse-clicked rotate bgcolor theme]
                    :or {on-mouse-clicked identity rotate 0 bgcolor "transparent"}}]
   (if (some? tile)
     {:fx/type :stack-pane
      :style {:-fx-background-color bgcolor}
      :on-mouse-clicked on-mouse-clicked
      :rotate rotate
-     :children [front-tile
+     :children [{:fx/type front-tile
+                 :theme theme}
                 {:fx/type :image-view
-                 :image {:url (tile/url tile)
+                 :image {:url (tile/url theme tile)
                          :requested-width 32
                          :preserve-ratio true
                          :background-loading true
                          :smooth true}}]}
-    back-tile))
+    {:fx/type back-tile
+     :theme theme}))
 
-(defn agaripai-view [{:keys [tile]}]
+(defn agaripai-view [{:keys [tile theme]}]
   {:fx/type :v-box
    :spacing 2
    :children [{:fx/type :label :text "Agaripai"}
               {:fx/type tile-view
+               :theme theme
                :tile tile
                :on-mouse-clicked {:event/type ::set-agaripai :tile nil}}]})
 
-(defn an-view [{:keys [tile index]}]
+(defn an-view [{:keys [tile index theme]}]
   {:fx/type tile-view
+   :theme theme
    :tile tile
    :on-mouse-clicked {:event/type ::remove-from-hand
                       :path :an
                       :index index}})
 
-(defn min-view [{:keys [tile index rotate]}]
+(defn min-view [{:keys [tile index rotate theme]}]
   {:fx/type tile-view
+   :theme theme
    :tile tile
    :rotate rotate
    :on-mouse-clicked {:event/type ::remove-from-hand
                       :path :min
                       :index index}})
 
-(defn dorahyouji-view [{:keys [tile index]}]
+(defn dorahyouji-view [{:keys [tile index theme]}]
   {:fx/type tile-view
+   :theme theme
    :tile tile
    :on-mouse-clicked {:event/type ::remove-from-hand
                       :path :dorahyouji
@@ -118,19 +126,19 @@
                 (if ukeire (contains? ukeire tile) (hand/can-add-tile? hand tile))
                 (some #{tile} (hand/expand-groups (:an hand))))))
 
-(defn- keyboard-key-button [{:keys [tile disable]}]
+(defn- keyboard-key-button [{:keys [tile disable theme]}]
   {:fx/type :button
    :text ""
    :max-width 54
    :max-height 72
-   :graphic {:fx/type tile-view :tile tile}
+   :graphic {:fx/type tile-view :tile tile :theme theme}
    :on-action {:event/type ::keyboard-input :tile tile}
    :disable disable})
 
-(defn radio-group [{:keys [options value on-action]}]
+(defn radio-group [{:keys [options value on-action box]}]
   {:fx/type fx/ext-let-refs
    :refs {::toggle-group {:fx/type :toggle-group}} ;; define toggle group
-   :desc {:fx/type :h-box
+   :desc {:fx/type box
           :spacing 10
           :children (for [option options]
                       {:fx/type :radio-button
@@ -141,10 +149,11 @@
                        :text (capitalize (name option))
                        :on-action (assoc on-action :option option)})}})
 
-(defn- keyboard [{:keys [kmode akadora hand results]}]
+(defn- keyboard [{:keys [kmode akadora hand results theme]}]
   {:fx/type :v-box
    :spacing 5
    :children [{:fx/type radio-group
+               :box :h-box
                :options [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
                :value kmode
                :on-action {:event/type ::set-keyboard-mode}}
@@ -164,9 +173,10 @@
                                             t)]
                              {:fx/type keyboard-key-button
                               :disable (not (can-input? kmode akadora hand results actual-t))
-                              :tile actual-t}))}]})
+                              :tile actual-t
+                              :theme theme}))}]})
 
-(defn- hand-view [{:keys [hand]}]
+(defn- hand-view [{:keys [hand theme]}]
   {:fx/type :tile-pane
    :pref-columns 14
    :hgap 1
@@ -180,68 +190,91 @@
                (for [[index tile-or-group] (map-indexed vector (:an hand))]
                  (if (group/group? tile-or-group)
                    (for [[i tile] (map-indexed vector (group/expand tile-or-group))]
-                     {:fx/type an-view :tile (when (< 0 i 3) tile) :index index})
-                   {:fx/type an-view :tile tile-or-group :index index})))
+                     {:fx/type an-view :tile (when (< 0 i 3) tile) :index index :theme theme})
+                   {:fx/type an-view :tile tile-or-group :index index :theme theme})))
               (for [[index group] (map-indexed vector (:min hand))
                     [i tile] (map-indexed vector (group/expand group))]
-                {:fx/type min-view :tile tile :index index :rotate (if (= i 0) 90 0)}))})
+                {:fx/type min-view :tile tile :index index :rotate (if (= i 0) 90 0) :theme theme}))})
 
-(defn- wind-button [{:keys [wind kind]}]
+(defn- wind-button [{:keys [wind kind theme]}]
   {:fx/type :v-box
    :spacing 2
    :children [{:fx/type :label :text (capitalize (name kind))}
               {:fx/type :button
                :text ""
-               :graphic {:fx/type tile-view :tile (tile/wind wind)}
+               :graphic {:fx/type tile-view :tile (tile/wind wind) :theme theme}
                :on-action {:event/type ::advance-wind :kind kind}
                :max-width 54
                :max-height 72}]})
 
-(defn control-dorahyouji [{:keys [dorahyouji riichi]}]
+(defn control-dorahyouji [{:keys [dorahyouji extra-yaku theme]}]
   {:fx/type :v-box
    :spacing 2
    :children [{:fx/type :label :text "Dorahyouji"}
               {:fx/type :tile-pane
                :hgap 2
-               :children (let [doras (take (if riichi 10 5) (lazy-cat dorahyouji (repeat nil)))]
+               :children (let [n (if (contains? extra-yaku :riichi) 10 5)
+                               doras (take n (lazy-cat dorahyouji (repeat nil)))]
                            (for [[index dora] (map-indexed vector doras)]
-                             {:fx/type dorahyouji-view :tile dora :index index}))}]})
+                             {:fx/type dorahyouji-view :tile dora :index index :theme theme}))}]})
 
 (defn agari-view [{:keys [agari]}]
   {:fx/type :v-box
    :spacing 2
    :children [{:fx/type :label :text "Agari"}
               {:fx/type radio-group
+               :box :v-box
                :options [:ron :tsumo]
                :value agari
                :on-action {:event/type ::set-agari}}]})
 
+(defn control-extra-yaku [{:keys [extra-yaku]}]
+  {:fx/type :v-box
+   :spacing 2
+   :children (cons {:fx/type :label :text "Extra Yaku"}
+                   (for [yaku [:riichi :ippatsu :chankan :rinshan-kaihou :haitei-raoyue :houtei-raoyui]]
+                     {:fx/type :check-box
+                      :text (capitalize (name yaku))
+                      :selected (contains? extra-yaku yaku)
+                      :on-selected-changed {:event/type ::extra-yaku :yaku yaku}
+                      :disable (and (= yaku :ippatsu) (not (contains? extra-yaku :riichi)))}))})
+
+(defn control-theme [{:keys [theme]}]
+  {:fx/type :v-box
+   :spacing 2
+   :children [{:fx/type :label
+               :text "Tile Theme"}
+              {:fx/type radio-group
+               :options [:regular :black]
+               :value theme
+               :on-action {:event/type ::set-theme}
+               :box :v-box}]})
+
 (defn- control-buttons [{:keys [bakaze jikaze dorahyouji agari
-                                agaripai riichi ippatsu] :as hand}]
+                                agaripai extra-yaku theme] :as hand}]
   {:fx/type :h-box
    :spacing 10
    :children [{:fx/type wind-button
                :wind bakaze
-               :kind :bakaze}
+               :kind :bakaze
+               :theme theme}
               {:fx/type wind-button
                :wind jikaze
-               :kind :jikaze}
+               :kind :jikaze
+               :theme theme}
               {:fx/type control-dorahyouji
                :dorahyouji dorahyouji
-               :riichi riichi}
+               :extra-yaku extra-yaku
+               :theme theme}
               {:fx/type agari-view
                :agari agari}
               {:fx/type agaripai-view
-               :tile agaripai}
-              {:fx/type :check-box
-               :text "Riichi"
-               :selected riichi
-               :on-selected-changed {:event/type ::extra-yaku :yaku :riichi}}
-              {:fx/type :check-box
-               :text "Ippatsu"
-               :selected ippatsu
-               :on-selected-changed {:event/type ::extra-yaku :yaku :ippatsu}
-               :disable (not riichi)}
+               :tile agaripai
+               :theme theme}
+              {:fx/type control-extra-yaku
+               :extra-yaku extra-yaku}
+              {:fx/type control-theme
+               :theme theme}
               {:fx/type :button
                :text "Reset"
                :on-action {:event/type ::reset}
@@ -279,28 +312,29 @@ Akadora 赤ドラ red fives
 Riichi 立直 special yaku
 Ippatsu 一発 \"one-shot\" win with riichi in 1 turn"}]})
 
-(defn- tile-pane [{:keys [hand kmode akadora results]}]
-  {:fx/type :scroll-pane
-   :fit-to-width true
-   :content {:fx/type :v-box
-             :fill-width true
-             :spacing 10
-             :children [(assoc hand :fx/type control-buttons)
-                        {:fx/type hand-view :hand hand}
-                        {:fx/type keyboard :kmode kmode :akadora akadora :hand hand :results results}
-                        {:fx/type results-view :results results}
-                        glossary]}})
-
-(defn- root [{:keys [hand keyboard-mode akadora results]}]
+(defn- root [{:keys [hand keyboard-mode akadora results theme]}]
   {:fx/type :stage
    :showing true
    :title "Riichi calculator"
    :scene {:fx/type :scene
-           :root {:fx/type tile-pane
-                  :hand hand
-                  :kmode keyboard-mode
-                  :akadora akadora
-                  :results results}}})
+           :root {:fx/type :scroll-pane
+                  :fit-to-width true
+                  :content {:fx/type :v-box
+                            :fill-width true
+                            :spacing 10
+                            :children [(assoc hand :fx/type control-buttons :theme theme)
+                                       {:fx/type hand-view
+                                        :hand hand
+                                        :theme theme}
+                                       {:fx/type keyboard 
+                                        :kmode keyboard-mode
+                                        :akadora akadora
+                                        :hand hand
+                                        :results results
+                                        :theme theme}
+                                       {:fx/type results-view
+                                        :results results}
+                                       glossary]}}}})
 
 (defn map-event-handler [event]
   (case (:event/type event)
@@ -311,8 +345,11 @@ Ippatsu 一発 \"one-shot\" win with riichi in 1 turn"}]})
     ::set-agaripai (swap! *state assoc-in [:hand :agaripai] (:tile event))
     ::advance-wind (advance-wind (:kind event))
     ::remove-from-hand (remove-from-hand (:path event) (:index event))
+    ::set-theme (swap! *state assoc :theme (:option event))
     ::reset (reset! *state initial-state)
-    ::extra-yaku (swap! *state assoc-in [:hand (:yaku event)] (:fx/event event))
+    ::extra-yaku (swap! *state update :hand #(if (:fx/event event)
+                                               (hand/add-yaku % (:yaku event))
+                                               (hand/remove-yaku % (:yaku event))))
     (println "unknown event:" event))
   (swap! *state assoc :results (hand/results (:hand @*state)))
   (println @*state))
