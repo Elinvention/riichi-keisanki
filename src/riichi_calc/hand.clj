@@ -83,29 +83,27 @@
   [hand]
   (count (filter group/taatsu? (:an hand))))
 
-;; accurateShanten =
-;; min(8 - 2 * groups
-;;       - min(pairs + taatsu, floor(hand.length/3)-groups)
-;;       - min(1, max(0, pairs + taatsu - (4 - groups))),
-;;     6 - pairs,
-;;     13 - diffTerminals - max(terminalPairs, 1))
+;; shanten basic 8 point rules:
+;; 8 - 2 * groups - 1 * pairs - 1 * proto
+;; Special cases:
+;; No more than 5 blocks (take in groups then pairs then proto)
+;; if pairs = 0 and blocks >= 5 then add 1
+;; TODO: rename groups to blocks and update everything to reflect that blocks = groups + pairs
 
 (defn regular-shanten
   "Returns the shanten number of a regular hand."
   [hand]
-  (let [size (count (expand hand))
-        ngroups (count (remove (some-fn group/couple? group/taatsu?) (groups hand)))
-        npairs (count-pairs hand)
-        ntaatsu (count-taatsu hand)]
-    (- 8
-       (* 2 ngroups)
-       (min (+ npairs ntaatsu) (- (quot size 3) ngroups))
-       (min 1 (max 0 (- (+ npairs ntaatsu) (- 4 ngroups)))))))
+  (let [blocks (take 5 (sort-by group/group-key (groups hand)))
+        nblocks (count blocks)
+        ngroups (count (remove (some-fn group/couple? group/taatsu?) blocks))
+        npairs (count (filter group/couple? blocks))
+        ntaatsu (count (filter group/taatsu? blocks))]
+    (- 8 (* 2 ngroups) npairs ntaatsu (if (and (>= nblocks 5) (= 0 npairs)) -1 0))))
 
 (defn chiitoitsu-shanten
   "Returns the shanten number of a 7 pairs hand."
   [hand]
-  (- 6 (count-pairs [hand])))
+  (- 6 (count-pairs hand)))
 
 (defn kokushi-shanten
   "Returns the shanten number of a 13 orphans hand."

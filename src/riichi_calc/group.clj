@@ -134,3 +134,10 @@
                     (if (simple? group) 16 32))
     :else 0))
 
+(defn group-key [{:keys [kind]}]
+  (case kind
+    :quad 1
+    :tris 2
+    :straight 3
+    :couple 4
+    :taatsu 5))
