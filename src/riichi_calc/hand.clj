@@ -46,6 +46,14 @@
 (defn expand [hand]
   (expand-groups (full hand)))
 
+(defn add-yaku [hand yaku]
+  (if (or (not= yaku :ippatsu) (contains? (:extra-yaku hand) :riichi))
+    (update hand :extra-yaku conj yaku)
+    hand))
+
+(defn remove-yaku [hand yaku]
+  (update hand :extra-yaku disj yaku (when (= yaku :riichi) :ippatsu)))
+
 (defn count-yakuhai [{:keys [bakaze jikaze] :as hand}]
   (let [value? (partial group/value? bakaze jikaze)
         non-couple-value? (every-pred group/non-couple? value?)]
@@ -63,9 +71,8 @@
 (defn count-tile [tile {:keys [dorahyouji] :as hand}]
   (+ (count-own-tile tile hand) (tile/count-tile tile dorahyouji)))
 
-(defn space-left [{:keys [an min]}]
-  (- 14 (apply + (count (remove :kind an))
-               (map group/virtual-size (filter :kind (concat an min))))))
+(defn space-left [hand]
+  (- 14 (count (tiles hand)) (apply + (map group/virtual-size (groups hand)))))
 
 (defn count-pairs [hand]
   (count (filter group/couple? (groups hand))))
@@ -118,7 +125,7 @@
 (defn tenpai?
   "Returns true if the hand is ready (waiting for the winning tile), else false."
   [hand]
-  (= (shanten hand) 0))
+  (and (= (space-left hand) 1) (= (shanten hand) 0)))
 
 (defn can-add-tile? [hand {:keys [red] :as tile}]
   (and (> (space-left hand) 0)
@@ -577,7 +584,6 @@
            visited (vec (filter :kind (:an hand)))]
        (group-regular-hand hand visited not-visited 0))))
   ([hand visited not-visited depth]
-   (println "group-regular-hand" visited not-visited depth)
    (letfn
     [(try-consecutive
        [n]
@@ -622,11 +628,9 @@
          visited (vec (filter :kind (:an hand)))]
      (group-incomplete-hand hand visited not-visited 0)))
   ([hand visited not-visited depth]
-   (println "group-incomplete-hand" visited not-visited depth)
    (letfn
     [(try-consecutive
        [n]
-       (println "try-consecutive" n depth)
        (let [taken (take n not-visited)]
          (when (= (count taken) n)
            (when-let [new-group (group/group taken)]
@@ -636,7 +640,6 @@
                                     (inc depth))))))
      (try-straight
        []
-       (println "try-straight" depth)
        (let [tiles-deduped (take 3 (dedupe not-visited))]
          (when (= (count tiles-deduped) 3)
            (when-let [group-deduped (group/group tiles-deduped)]
@@ -645,24 +648,24 @@
                                     (vec (tile/sort-tiles (seq-sub not-visited tiles-deduped)))
                                     (inc depth))))))
      (try-skip
-       []
-       (println "try-skip" depth)
-       (group-incomplete-hand hand
-                              (conj visited (first not-visited))
-                              (rest not-visited)
-                              (inc depth)))]
+      []
+      (group-incomplete-hand hand
+                             (conj visited (first not-visited))
+                             (rest not-visited)
+                             (inc depth)))]
      (case (count not-visited)
        0 (assoc hand :an visited)
-       1 (assoc hand :an (vec (concat visited not-visited)))
-       2 (or (try-consecutive 2) (assoc hand :an (vec (concat visited not-visited))))
+       1 (try-skip)
+       2 (or (try-consecutive 2) (try-skip))
        (or (try-consecutive 3) (try-straight) (try-consecutive 2) (try-skip))))))
 
 (defn grouped [hand]
   (let [sorted-hand (update hand :an tile/sort-tiles)]
     (or (group-kokushi-hand sorted-hand)
-        (group-chiitoitsu-hand sorted-hand)
         (group-regular-hand sorted-hand)
-        (group-incomplete-hand sorted-hand))))
+        (group-chiitoitsu-hand sorted-hand)
+        (group-incomplete-hand sorted-hand)
+        sorted-hand)))
 
 (comment
   (let [h (hand :an (conj (mapv tile/man [2 3 4 5 5]) (group/quad (tile/man 1)))
@@ -685,6 +688,7 @@
   (let [tiles (expand hand)]
     (->> tile/all-34-tiles
          (filter #(< (tile/min-distance tiles %) 2))  ;; for each tile near one in the hand
+         (filter (partial can-add-tile? hand))  ;; that can be added to the hand
          (map #(hash-map :tile % :hand (hand-with-tile hand %)))  ;; build a hand with tile
          (filter #(= (shanten (:hand %)) -1))  ;; check it's shanten
          (filter #(valid? (:hand %)))  ;; check if it's a valid hand
@@ -722,12 +726,12 @@
                       :summary (str "Tenpai! Please choose agaripai (winning tile).\nUkeire: "
                                     (mapv tile/tile-name uke))
                       :ukeire uke})
-      (nil? (:agaripai gh)) {:type :agaripai
-                             :summary "Please choose agaripai (winning tile)."}
       (not (valid? gh)) (let [shan (shanten gh)]
                           {:type :invalid
                            :summary (str "Invalid hand. Shanten: " shan)
                            :shanten shan})
+      (nil? (:agaripai gh)) {:type :agaripai
+                             :summary "Please choose agaripai (winning tile)."}
       :else (let [yakus (list-yakus gh)]
               (if (no-yaku? yakus)
                 {:type :no-yaku :summary "No yaku!"}
