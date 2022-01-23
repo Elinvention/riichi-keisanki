@@ -622,42 +622,49 @@
   (when (kokushi-musou? hand)
     hand))
 
+(defn- solution-key [hand]
+  (- (shanten hand) (count (groups hand))))
+
 (defn group-incomplete-hand
   ([hand]
    (let [not-visited (vec (remove :kind (:an hand)))
-         visited (vec (filter :kind (:an hand)))]
-     (group-incomplete-hand hand visited not-visited 0)))
-  ([hand visited not-visited depth]
+         visited (vec (filter :kind (:an hand)))
+         solutions (group-incomplete-hand visited not-visited 0 0)]
+     (println "Tested" (count solutions) "possibilities")
+     (doseq [s solutions] (println (solution-key (assoc hand :an s)) s))
+     (when (> (count solutions) 0)
+       (apply min-key solution-key (map #(assoc hand :an %) solutions)))))
+  ([visited not-visited value depth]
    (letfn
-    [(try-consecutive
+    [(consecutive
        [n]
        (let [taken (take n not-visited)]
          (when (= (count taken) n)
            (when-let [new-group (group/group taken)]
-             (group-incomplete-hand hand
-                                    (conj visited new-group)
+             (group-incomplete-hand (conj visited new-group)
                                     (vec (nthrest not-visited n))
+                                    (+ value (if (= n 3) 2 1))
                                     (inc depth))))))
-     (try-straight
+     (straight
        []
        (let [tiles-deduped (take 3 (dedupe not-visited))]
          (when (= (count tiles-deduped) 3)
            (when-let [group-deduped (group/group tiles-deduped)]
-             (group-incomplete-hand hand
-                                    (conj visited group-deduped)
+             (group-incomplete-hand (conj visited group-deduped)
                                     (vec (tile/sort-tiles (seq-sub not-visited tiles-deduped)))
+                                    (+ value 2)
                                     (inc depth))))))
-     (try-skip
+     (skip
       []
-      (group-incomplete-hand hand
-                             (conj visited (first not-visited))
+      (group-incomplete-hand (conj visited (first not-visited))
                              (rest not-visited)
+                             value
                              (inc depth)))]
      (case (count not-visited)
-       0 (assoc hand :an visited)
-       1 (try-skip)
-       2 (or (try-consecutive 2) (try-skip))
-       (or (try-consecutive 3) (try-straight) (try-consecutive 2) (try-skip))))))
+       0 [visited]
+       1 (skip)
+       2 (concat (consecutive 2) (skip))
+       (concat (consecutive 3) (consecutive 2) (straight) (skip))))))
 
 (defn grouped [hand]
   (let [sorted-hand (update hand :an tile/sort-tiles)]
