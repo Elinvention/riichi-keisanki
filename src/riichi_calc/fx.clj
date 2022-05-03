@@ -290,12 +290,19 @@
                :text (:summary results)}]})
 
 (def glossary
-  {:fx/type :v-box
-   :spacing 5
+  {:fx/type :grid-pane
+   :padding 5
+   :hgap 20
+   :alignment :top-left
    :children [{:fx/type :label
+               :grid-pane/column 0
+               :grid-pane/row 0
+               :grid-pane/column-span 2
                :text "Glossary"
                :style {:-fx-font-size 32}}
               {:fx/type :label
+               :grid-pane/column 0
+               :grid-pane/row 2
                :text "Bakaze 場風 turn wind
 Jikaze 自風 (own) seat wind
 Dorahyoji ドラ表示 dora indicator
@@ -308,9 +315,18 @@ Pon ポン call for open triplet
 Chii チイ call for open straight
 Kan 槓 call for open quad
 Ankan 暗槓 call for concealed kan
-Akadora 赤ドラ red fives
-Riichi 立直 special yaku
-Ippatsu 一発 \"one-shot\" win with riichi in 1 turn"}]})
+Akadora 赤ドラ red fives"}
+              {:fx/type :label
+               :grid-pane/column 1
+               :grid-pane/row 1
+               :style {:-fx-font-size 24}
+               :text "Yakus"}
+              {:fx/type :label
+               :grid-pane/column 1
+               :grid-pane/row 2
+               :text "Riichi 立直 special yaku
+Ippatsu 一発 \"one-shot\" win with riichi in 1 turn
+Chankan 搶槓 win with a tile stolen from an opponent's kan"}]})
 
 (defn- root [{:keys [hand keyboard-mode akadora results theme]}]
   {:fx/type :stage
