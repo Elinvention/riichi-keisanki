@@ -135,6 +135,13 @@
        (every? numeral? tiles)
        (< 0 (Math/abs (- (:value tile1) (:value tile2))) 3)))
 
+(defn distance
+  [tile1 tile2]
+  (cond
+    (same? tile1 tile2) 0
+    (and (numeral? tile1) (numeral? tile2) (= (:seed tile1) (:seed tile2))) (Math/abs (- (:value tile1) (:value tile2)))
+    :else 100))
+
 (defn min-distance
   "Returns:
    - 0 if there is a tile in tiles
@@ -143,7 +150,7 @@
    - Integer/MAX_VALUE otherwise"
   [tiles tile]
   (cond
-    (some #{tile} tiles) 0
+    (some (partial same? tile) tiles) 0
     (numeral? tile) (if-let [numerals (not-empty (filter #(and (= (:seed %) (:seed tile)) (numeral? %)) tiles))]
                       (apply min (map #(Math/abs (- (:value %) (:value tile))) numerals))
                       Integer/MAX_VALUE)
@@ -152,6 +159,17 @@
 
 ;; Tile sorting and naming
 
+(def wind-key
+  {:east 310
+   :south 320
+   :west 330
+   :north 340})
+
+(def dragon-key
+  {:white 410
+   :green 420
+   :red 430})
+
 (defn tile-key
   "Maps each tile with an integer. Can be used with sort-by"
   [{:keys [value red] :as tile}]
@@ -159,15 +177,8 @@
        (man? tile) (* value 10)
        (sou? tile) (+ (* value 10) 100)
        (pin? tile) (+ (* value 10) 200)
-       (wind? tile) (case value
-                      :east 310
-                      :south 320
-                      :west 330
-                      :north 340)
-       (dragon? tile) (case value
-                        :white 410
-                        :green 420
-                        :red 430))
+       (wind? tile) (get wind-key value)
+       (dragon? tile) (get dragon-key value))
      (if red 5 0)))
 
 (defn sort-tiles [tiles]
@@ -243,3 +254,14 @@
                 tile)))))
 
 (def kokushi-tiles (set (filter (some-fn terminal? honor?) all-34-tiles)))
+
+(defn tiles [& {_man :man _sou :sou _pin :pin _wind :wind _dragon :dragon}]
+  (concat (map man (sort _man))
+          (map sou (sort _sou))
+          (map pin (sort _pin))
+          (map wind (sort-by wind-key _wind))
+          (map dragon (sort-by dragon-key _dragon))))
+
+(comment
+  (tiles :man [5 5 4] :sou [1 1 4 4 7 7] :pin [2 2 5 5 8 8] :dragon [:red :green])
+  )
