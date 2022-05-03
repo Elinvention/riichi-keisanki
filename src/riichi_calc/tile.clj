@@ -1,6 +1,5 @@
 (ns riichi-calc.tile
-  (:gen-class)
-  (:require [clojure.string :as s]))
+  (:gen-class))
 
 
 (defrecord Tile [seed value red])
@@ -229,12 +228,6 @@
 
 (defmethod print-method Tile [tile ^java.io.Writer w]
   (.write w (tile-name tile)))
-
-(defn url-from-name [theme tname]
-  (str "file:resources/tiles/Export/" (s/capitalize (name theme)) "/" tname ".png"))
-
-(defn url [theme tile]
-  (url-from-name theme (tile-name tile)))
 
 (def all-34-tiles
   (vec

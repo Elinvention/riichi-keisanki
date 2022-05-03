@@ -51,16 +51,22 @@
   (swap! *state update-in [:hand wind] tile/wind-next))
 
 
+(defn url-from-name [theme tname]
+  (str "file:resources/tiles/Export/" (capitalize (name theme)) "/" tname ".png"))
+
+(defn url [theme tile]
+  (url-from-name theme (tile/tile-name tile)))
+
 (defn front-tile [{:keys [theme]}]
   {:fx/type :image-view
-   :image {:url (tile/url-from-name theme "Front")
+   :image {:url (url-from-name theme "Front")
            :requested-width 36
            :preserve-ratio true
            :background-loading true
            :smooth true}})
 
 (defn back-tile [{:keys [theme]}]
-  (assoc-in (front-tile {:theme theme}) [:image :url] (tile/url-from-name theme "Back")))
+  (assoc-in (front-tile {:theme theme}) [:image :url] (url-from-name theme "Back")))
 
 (defn- tile-view [{:keys [tile on-mouse-clicked rotate bgcolor theme]
                    :or {on-mouse-clicked identity rotate 0 bgcolor "transparent"}}]
@@ -72,7 +78,7 @@
      :children [{:fx/type front-tile
                  :theme theme}
                 {:fx/type :image-view
-                 :image {:url (tile/url theme tile)
+                 :image {:url (url theme tile)
                          :requested-width 32
                          :preserve-ratio true
                          :background-loading true
