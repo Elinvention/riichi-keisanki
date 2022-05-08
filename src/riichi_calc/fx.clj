@@ -14,13 +14,11 @@
 
 (def *state (atom initial-state))
 
-(def conj-sort-tile (comp vec (partial sort-by tile/tile-key) conj))
-
 (defn keyboard-input [tile]
   (let [{:keys [hand keyboard-mode akadora]} @*state]
     (case keyboard-mode
       :an (when (hand/can-add-tile? hand tile)
-            (swap! *state update-in [:hand :an] conj-sort-tile tile))
+            (swap! *state update-in [:hand :an] tile/conj-sort-tile tile))
       :chii (if akadora
               (when (hand/can-add-red-chii? hand tile)
                 (swap! *state update-in [:hand :min] conj (group/red-straight tile)))
@@ -36,7 +34,7 @@
                     (swap! *state update-in [:hand :dorahyouji] conj tile))
       :agaripai (if (> (hand/space-left hand) 0)
                   (when (hand/can-add-tile? hand tile)
-                    (swap! *state update-in [:hand :an] conj-sort-tile tile)
+                    (swap! *state update-in [:hand :an] tile/conj-sort-tile tile)
                     (swap! *state assoc-in [:hand :agaripai] tile))
                   (when (some #{tile} (hand/expand hand))
                     (swap! *state assoc-in [:hand :agaripai] tile))))

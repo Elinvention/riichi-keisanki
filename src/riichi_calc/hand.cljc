@@ -1,7 +1,5 @@
 (ns riichi-calc.hand
-  (:gen-class)
   (:require [clojure.string :as s]
-            [clojure.math.numeric-tower :as math]
             [clojure.core.match :refer [match]]
             [riichi-calc.group :as group]
             [riichi-calc.tile :as tile]))
@@ -479,7 +477,7 @@
 (defn basic-points [{:keys [yakuman regular] :as han} fu]
   (cond
     (some? yakuman) (limit-hands han)
-    (<= 1 regular 4) (* fu (math/expt 2 (+ 2 regular)))
+    (<= 1 regular 4) (* fu (Math/pow 2 (+ 2 regular)))
     (> regular 4) (limit-hands han)))
 
 (defn non-dealer-tsumo [han fu]
@@ -526,8 +524,8 @@
 (defn final-scores [[score1 score2 score3 score4 :as raw-scores]
                     start target oka? uma-a uma-b]
   (if (not= (apply + raw-scores) (* 4 start))
-    (throw (IllegalArgumentException.
-            (str "Scores should add up to " (* 4 start))))
+    (throw #?(:clj (IllegalArgumentException. (str "Scores should add up to " (* 4 start)))
+              :cljs (js/Error. (str "Scores should add up to " (* 4 start)))))
     (let [oka-prize (if oka? (* 4 (- target start)) 0)
           oka-target (if oka? target start)]
       [(-> score1 (- oka-target) (+ oka-prize) round-thousandth (+ uma-a))
@@ -631,8 +629,8 @@
          visited (vec (filter :kind (:an hand)))
          solutions (group-incomplete-hand visited not-visited 0 0)]
      (println "Tested" (count solutions) "possibilities")
-     (doseq [s solutions] (println (solution-key (assoc hand :an s)) s))
-     (when (> (count solutions) 0)
+     ;;(doseq [s solutions] (println (solution-key (assoc hand :an s)) s))
+     (when (not-empty solutions)
        (apply min-key solution-key (map #(assoc hand :an %) solutions)))))
   ([visited not-visited value depth]
    (letfn
@@ -688,6 +686,10 @@
 (defn hand-with-tile [hand tile]
   (grouped (update hand :an (comp expand-groups conj) tile)))
 
+(defn debug [x]
+  (println x)
+  x)
+
 (defn ukeire
   "Brute force ukeire: build a new hand with a tile added and recompute it's shanten.
    If the shanten is -1 that tile is a winning one."
@@ -696,6 +698,7 @@
     (->> tile/all-34-tiles
          (filter #(< (tile/min-distance tiles %) 2))  ;; for each tile near one in the hand
          (filter (partial can-add-tile? hand))  ;; that can be added to the hand
+         (debug)
          (map #(hash-map :tile % :hand (hand-with-tile hand %)))  ;; build a hand with tile
          (filter #(= (shanten (:hand %)) -1))  ;; check it's shanten
          (filter #(valid? (:hand %)))  ;; check if it's a valid hand
@@ -718,35 +721,36 @@
                           (str "★ " yname ": " yval)))
                       (if (empty? yakumans) yakus yakumans)))))
 
-(defn string-of-hans [{:keys [yakuman regular]}]
+(defn string-of-han [{:keys [yakuman regular]} fu]
   (cond
     (some? yakuman) (str (case yakuman 1 "", 2 "Double ", 3 "Triple ") "Yakuman")
-    (some? regular) (str regular)))
+    (some? regular) (str regular " han " fu " fu")))
 
 (defn results [hand]
-  (let [gh (grouped hand)]
-    (cond
-      (> (space-left gh) 1) {:type :incomplete
-                             :summary "Please enter at least 13 tiles"}
-      (tenpai? gh) (let [uke (ukeire gh)]
-                     {:type :tenpai
-                      :summary (str "Tenpai! Please choose agaripai (winning tile).\nUkeire: "
-                                    (mapv tile/tile-name uke))
-                      :ukeire uke})
-      (not (valid? gh)) (let [shan (shanten gh)]
-                          {:type :invalid
-                           :summary (str "Invalid hand. Shanten: " shan)
-                           :shanten shan})
-      (nil? (:agaripai gh)) {:type :agaripai
-                             :summary "Please choose agaripai (winning tile)."}
-      :else (let [yakus (list-yakus gh)]
-              (if (no-yaku? yakus)
-                {:type :no-yaku :summary "No yaku!"}
-                (let [han (hans yakus)
-                      fu (minipoints gh)
-                      score (score gh han fu)]
-                  {:type :winning
-                   :summary (str "Winning hand!\nYakus:\n" (string-of-yakus yakus)
-                                 "\nHan: " (string-of-hans han) " Fu: " fu
-                                 "\nScore: " (string-of-score score))
-                   :yakus yakus :han han :fu fu :score score :agari (:agari gh)}))))))
+  (if (> (space-left hand) 1)
+    {:type :incomplete
+     :summary "Please enter at least 13 tiles"}
+    (let [gh (grouped hand)]
+      (cond
+        (tenpai? gh) (let [uke (ukeire gh)]
+                       {:type :tenpai
+                        :summary (str "Tenpai! Please choose agaripai (winning tile).\nUkeire: "
+                                      (mapv tile/tile-name uke))
+                        :ukeire uke})
+        (not (valid? gh)) (let [shan (shanten gh)]
+                            {:type :invalid
+                             :summary (str "Invalid hand. Shanten: " shan)
+                             :shanten shan})
+        (nil? (:agaripai gh)) {:type :agaripai
+                               :summary "Please choose agaripai (winning tile)."}
+        :else (let [yakus (list-yakus gh)]
+                (if (no-yaku? yakus)
+                  {:type :no-yaku :summary "No yaku!"}
+                  (let [han (hans yakus)
+                        fu (minipoints gh)
+                        score (score gh han fu)]
+                    {:type :winning
+                     :summary (str "Winning hand!\nYakus:\n" (string-of-yakus yakus)
+                                   "\nPoints: " (string-of-han han fu)
+                                   "\nScore: " (string-of-score score))
+                     :yakus yakus :han han :fu fu :score score :agari (:agari gh)})))))))

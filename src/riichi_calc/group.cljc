@@ -1,5 +1,4 @@
 (ns riichi-calc.group
-  (:gen-class)
   (:require clojure.set [riichi-calc.tile :as tile]))
 
 
@@ -28,8 +27,8 @@
 (defn group? [group]
   (contains? #{:couple :tris :quad :straight} (:kind group)))
 
-(defn expand [{:keys [tiles]}]
-  tiles)
+(defn expand [x]
+  (if (group? x) (:tiles x) x))
 
 (defn couple [tile]
   (group (tile/couple tile)))
@@ -58,8 +57,14 @@
 (defn to-string [group]
   (str "[" (apply str (map tile/tile-name (expand group))) "]"))
 
-(defmethod print-method Group [group ^java.io.Writer w]
-  (.write w (to-string group)))
+#?(:clj
+   (defmethod print-method Group [group ^java.io.Writer w]
+     (.write w (to-string group)))
+   :cljs
+   (extend-protocol IPrintWithWriter
+     Group
+     (-pr-writer [group w _]
+       (write-all w (to-string group)))))
 
 (defn non-couple? [group]
   ((some-fn straight? tris? quad?) group))

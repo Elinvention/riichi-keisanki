@@ -1,5 +1,4 @@
-(ns riichi-calc.tile
-  (:gen-class))
+(ns riichi-calc.tile)
 
 
 (defrecord Tile [seed value red])
@@ -64,7 +63,8 @@
 
 (defn straight-int? [values]
   (if (not (every? int? values))
-    (throw (IllegalArgumentException. "Only integers plz"))
+    (throw #?(:clj (IllegalArgumentException. "Only integers plz")
+              :cljs (js/Error. "Only integers plz")))
     (every? #(= 1 %) (map - (rest values) values))))
 
 (defn straight? [tiles]
@@ -146,14 +146,14 @@
    - 0 if there is a tile in tiles
    - the minimum distance from other numerals if the tile is a numeral and
      there are same seed numerals in tiles
-   - Integer/MAX_VALUE otherwise"
+   - 10 otherwise"
   [tiles tile]
   (cond
     (some (partial same? tile) tiles) 0
     (numeral? tile) (if-let [numerals (not-empty (filter #(and (= (:seed %) (:seed tile)) (numeral? %)) tiles))]
                       (apply min (map #(Math/abs (- (:value %) (:value tile))) numerals))
-                      Integer/MAX_VALUE)
-    :else Integer/MAX_VALUE))
+                      10)
+    :else 10))
 
 
 ;; Tile sorting and naming
@@ -182,6 +182,8 @@
 
 (defn sort-tiles [tiles]
   (into [] (sort-by tile-key tiles)))
+
+(def conj-sort-tile (comp (partial sort-tiles) conj))
 
 (defn numeral-next [value]
   (inc (mod value 9)))
@@ -226,8 +228,12 @@
     :wind (wind-name value)
     :dragon (dragon-name value)))
 
-(defmethod print-method Tile [tile ^java.io.Writer w]
-  (.write w (tile-name tile)))
+#?(:clj (defmethod print-method Tile [tile ^java.io.Writer w]
+          (.write w (tile-name tile)))
+   :cljs (extend-protocol IPrintWithWriter
+           Tile
+           (-pr-writer [tile w _]
+             (write-all w (tile-name tile)))))
 
 (def all-34-tiles
   (vec
