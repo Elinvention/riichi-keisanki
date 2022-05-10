@@ -255,11 +255,11 @@
 (def kokushi-tiles (set (filter (some-fn terminal? honor?) all-34-tiles)))
 
 (defn tiles [& {_man :man _sou :sou _pin :pin _wind :wind _dragon :dragon}]
-  (concat (map man (sort _man))
-          (map sou (sort _sou))
-          (map pin (sort _pin))
-          (map wind (sort-by wind-key _wind))
-          (map dragon (sort-by dragon-key _dragon))))
+  (vec (concat (map man (sort _man))
+               (map sou (sort _sou))
+               (map pin (sort _pin))
+               (map wind (sort-by wind-key _wind))
+               (map dragon (sort-by dragon-key _dragon)))))
 
 (comment
   (tiles :man [5 5 4] :sou [1 1 4 4 7 7] :pin [2 2 5 5 8 8] :dragon [:red :green])
