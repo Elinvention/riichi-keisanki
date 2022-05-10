@@ -1,4 +1,4 @@
-# riichi-calc
+# リーチ計算機 Riichi Keisanki
 
 A graphical user interface with tools for Riichi Mahjong.
 
@@ -6,9 +6,19 @@ It can compute the list of yakus and scores from a given hand.
 
 ## Usage
 
-Clone this repo and run `clj -Xmain`.
+Currently there are 2 GUIs. The original one is made with [cljfx], written in
+Clojure and should be easy to run on your PC.
+The other one is made with [reagent], written in ClojureScript and is meant for
+the web (this version should run even on Android).
+
+Clone this repo and run `clj -Xmain` to launch the cljfx GUI.
+Run `clj -M --main cljs.main --compile reagent.core --repl`
+to launch an interactive REPL and a web browser with the reagent GUI.
 
 It can take a while to start as it has to compile initially.
+
+[cljfx]: https://github.com/cljfx/cljfx/
+[reagent]: https://github.com/reagent-project/reagent
 
 ## License
 
