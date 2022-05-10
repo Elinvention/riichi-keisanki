@@ -757,8 +757,8 @@
 (defn hand-with-tile [hand tile]
   (grouped (update hand :an (comp expand-groups conj) tile)))
 
-(defn debug [x]
-  (println x)
+(defn debug->> [f x]
+  (println (map f x))
   x)
 
 (defn ukeire
@@ -769,9 +769,11 @@
     (->> tile/all-34-tiles
          (filter #(< (tile/min-distance tiles %) 2))  ;; for each tile near one in the hand
          (filter (partial can-add-tile? hand))  ;; that can be added to the hand
-         (debug)
+         (debug->> identity)
          (map #(hash-map :tile % :hand (hand-with-tile hand %)))  ;; build a hand with tile
+         (debug->> #(shanten (:hand %)))
          (filter #(= (shanten (:hand %)) -1))  ;; check it's shanten
+         (debug->> :tile)
          (filter #(valid? (:hand %)))  ;; check if it's a valid hand
          (map :tile)  ;; get back the added tiles
          (set))))  ;; put them in a set
