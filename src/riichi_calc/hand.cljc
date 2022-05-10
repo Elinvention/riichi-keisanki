@@ -226,17 +226,17 @@
 (defn chantaiyao?
   "All tile groups contain at least 1 terminal or honor."
   [hand]
-  (every? (some-fn group/terminal? group/edge? group/honor?) (full hand)))
+  (every? group/not-simple-edge? (full hand)))
 
 (defn honroutou?
   "The hand is composed of nothing but all terminals and honors."
   [hand]
-  (every? (some-fn group/terminal? group/honor?) (full hand)))
+  (every? group/not-simple? (full hand)))
 
 (defn junchan-taiyao?
   "All sets contain at least one terminal."
   [hand]
-  (every? (some-fn group/terminal? group/edge?) (full hand)))
+  (every? group/not-simple-edge? (full hand)))
 
 (defn sanshoku-doujun?
   "Three sequences have the same number across the three different suits."

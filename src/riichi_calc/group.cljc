@@ -103,6 +103,8 @@
 
 (def not-simple? (some-fn terminal? honor?))
 
+(def not-simple-edge? (some-fn not-simple? edge?))
+
 (defn value? [wind-turn wind-seat group]
   (tile/value? (first (expand group)) wind-turn wind-seat))
 
