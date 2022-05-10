@@ -25,7 +25,7 @@
      (Group. (vec tiles) kind seed value red))))
 
 (defn group? [group]
-  (contains? #{:couple :tris :quad :straight} (:kind group)))
+  (contains? #{:couple :tris :quad :straight :taatsu} (:kind group)))
 
 (defn expand [x]
   (if (group? x) (:tiles x) x))
