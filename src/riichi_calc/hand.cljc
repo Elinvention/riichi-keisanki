@@ -422,6 +422,7 @@
    :haitei-raoyue   {:fun (partial extra-yaku? :haitei-raoyue) :han 1}
    :rinshan-kaihou  {:fun (partial extra-yaku? :rinshan-kaihou) :han 1}
    :chankan         {:fun (partial extra-yaku? :chankan) :han 1}
+   :tanyao          {:fun tanyao? :han 1}
    :chantaiyao      {:fun chantaiyao? :han 1}
    :sanshoku-doujun {:fun sanshoku-doujun? :han 1}
    :ittsu           {:fun ittsu? :han 1}
