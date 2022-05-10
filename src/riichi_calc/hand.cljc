@@ -367,8 +367,8 @@
 (defn tsuuiisou?
   "Every group of tiles are composed of honor tiles."
   [hand]
-  (let [winds (filter group/honor? (full hand))]
-    (= 4 (count winds))))
+  (let [winds (filter group/honor? (groups-only (full hand)))]
+    (= 5 (count winds))))
 
 (defn chuuren-poutou?
   "A hand consisting of the tiles 1112345678999 in the same suit plus any one
