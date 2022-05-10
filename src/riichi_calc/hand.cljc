@@ -120,10 +120,10 @@
 
 (defn kokushi-shanten
   "Returns the shanten number of a 13 orphans hand."
-  [{:keys [tiles groups]}]
+  [{:keys [tiles groups] :as tg}]
   {:pre [(every? #(not (:kind %)) tiles)
          (every? :kind groups)]}
-  (- 13 (count-distinct-not-simples tiles) (max 1 (count-terminal-pairs groups))))
+  (- 13 (count-distinct-not-simples tg) (* 2 (min 1 (count-terminal-pairs tg)))))
 
 (defn shanten
   "Returns the shanten number of any grouped hand."
@@ -177,7 +177,7 @@
    - nil (incomplete hand or wrong agaripai)"
   [{:keys [agaripai] :as hand}]
   (let [groups (groups-only (full hand))]
-    (when-let [agari-group (first (filter (partial group/in? agaripai) groups))]
+    (when-let [agari-group (some #(when (group/in? agaripai %) %) groups)]
       (case (:kind agari-group)
         :couple :tanki
         :tris :shanpon
@@ -199,7 +199,15 @@
   "This hand has one of each of the 13 different terminal and honor tiles plus
    one extra terminal or honour tile."
   [{:keys [an min]}]
-  (and (empty? min) (= (count an) 14) (every? #(some #{%} an) tile/kokushi-tiles)))
+  (let [exp-an (expand-groups an)]
+    (and (empty? min) (= (count exp-an) 14)
+         (every? #(some #{%} exp-an) tile/kokushi-tiles)
+         (some (every-pred group/couple? group/not-simple?) an))))
+
+(defn kokushi-tanki?
+  "If you win with kokushi with a tanki wait you get double yakuman"
+  [{:keys [an] :as hand}]
+  (and (kokushi-musou? hand) (= :tanki (machi hand))))
 
 (defn regular? 
   "Returns true if the hand is made of 4 groups and a pair."
@@ -408,6 +416,7 @@
    :ryanpeikou      {:fun ryanpeikou? :han 3}
    :chinitsu        {:fun chinitsu? :han 6}
    :kokushi-musou   {:fun kokushi-musou? :han :yakuman}
+   :kokushi-tanki   {:fun kokushi-tanki? :han :yakuman}
    :suuankou        {:fun suuankou? :han :yakuman}
    :daisangen       {:fun daisangen? :han :yakuman}
    :shousuushii     {:fun shousuushii? :han :yakuman}
@@ -701,9 +710,23 @@
       (when (chiitoitsu? new-hand)
         new-hand))))
 
+(defn group-kokushi-atama [hand]
+  (let [couples (partition 2 1 (filter tile/not-simple? (:an hand)))]
+    (if-let [atama (some (fn [couple]
+                           (when-let [new-group (group/group couple)]
+                             (when (group/couple? new-group)
+                               new-group)))
+                         couples)]
+      (let [tiles (seq-sub (:an hand) (group/expand atama))
+            tiles-with-atama (tile/sort-tiles (conj tiles atama))]
+       (assoc hand :an tiles-with-atama))
+      hand)))
+
 (defn group-kokushi-hand [hand]
-  (when (kokushi-musou? hand)
-    hand))
+  ;; is 6 the correct number?
+  (let [atama (group-kokushi-atama hand)]
+    (when (< (kokushi-shanten (split-tiles-groups (full atama))) 6)
+      atama)))
 
 (defn group-regular-hand [hand]
   (->> hand
