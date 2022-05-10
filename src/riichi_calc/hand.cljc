@@ -29,11 +29,16 @@
 (defn full [{:keys [an min]}]
   (concat an min))
 
-(defn groups [hand]
-  (filter :kind (full hand)))
+(defn groups-only [tiles-and-groups]
+  (vec (filter :kind tiles-and-groups)))
 
-(defn tiles [hand]
-  (remove :kind (full hand)))
+(defn tiles-only [tiles-and-groups]
+  (vec (remove :kind tiles-and-groups)))
+
+(defn split-tiles-groups [tiles-and-groups]
+  (let [groups (groups-only tiles-and-groups)
+        tiles (tiles-only tiles-and-groups)]
+    {:tiles tiles :groups groups}))
 
 (defn expand-groups [tiles-groups]
   (->> tiles-groups
@@ -70,16 +75,18 @@
   (+ (count-own-tile tile hand) (tile/count-tile tile dorahyouji)))
 
 (defn space-left [hand]
-  (- 14 (count (tiles hand)) (apply + (map group/virtual-size (groups hand)))))
+  (- 14
+     (count (tiles-only (full hand)))
+     (apply + (map group/virtual-size (groups-only (full hand))))))
 
-(defn count-pairs [hand]
-  (count (filter group/couple? (groups hand))))
+(defn count-pairs [{:keys [groups]}]
+  (count (filter group/couple? groups)))
 
-(defn count-distinct-not-simples [hand]
-  (count (distinct (filter tile/not-simple? (tiles hand)))))
+(defn count-distinct-not-simples [{:keys [tiles]}]
+  (count (distinct (filter tile/not-simple? tiles))))
 
-(defn count-terminal-pairs [hand]
-  (count (filter (every-pred group/couple? group/not-simple?) (groups hand))))
+(defn count-terminal-pairs [{:keys [groups]}]
+  (count (filter (every-pred group/couple? group/not-simple?) groups)))
 
 (defn count-taatsu
   [hand]
@@ -94,8 +101,10 @@
 
 (defn regular-shanten
   "Returns the shanten number of a regular hand."
-  [hand]
-  (let [blocks (take 5 (sort-by group/group-key (groups hand)))
+  [{:keys [tiles groups]}]
+  {:pre [(every? #(not (:kind %)) tiles)
+         (every? :kind groups)]}
+  (let [blocks (take 5 (sort-by group/group-key groups))
         nblocks (count blocks)
         ngroups (count (remove (some-fn group/couple? group/taatsu?) blocks))
         npairs (count (filter group/couple? blocks))
@@ -104,21 +113,26 @@
 
 (defn chiitoitsu-shanten
   "Returns the shanten number of a 7 pairs hand."
-  [hand]
-  (- 6 (count-pairs hand)))
+  [{:keys [tiles groups]}]
+  {:pre [(every? #(not (:kind %)) tiles)
+         (every? :kind groups)]}
+  (- 6 (count-pairs groups)))
 
 (defn kokushi-shanten
   "Returns the shanten number of a 13 orphans hand."
-  [hand]
-  (- 13 (count-distinct-not-simples hand) (max 1 (count-terminal-pairs hand))))
+  [{:keys [tiles groups]}]
+  {:pre [(every? #(not (:kind %)) tiles)
+         (every? :kind groups)]}
+  (- 13 (count-distinct-not-simples tiles) (max 1 (count-terminal-pairs groups))))
 
 (defn shanten
   "Returns the shanten number of any grouped hand."
   [hand]
-  (min
-   (regular-shanten hand)
-   (chiitoitsu-shanten hand)
-   (kokushi-shanten hand)))
+  (let [tg (split-tiles-groups (full hand))]
+    (min
+     (regular-shanten tg)
+     (chiitoitsu-shanten tg)
+     (kokushi-shanten tg))))
 
 (defn tenpai?
   "Returns true if the hand is ready (waiting for the winning tile), else false."
@@ -162,16 +176,17 @@
    - :kanchan (closed wait)
    - nil (incomplete hand or wrong agaripai)"
   [{:keys [agaripai] :as hand}]
-  (when-let [agari-group (first (filter (partial group/in? agaripai) (groups hand)))]
-    (case (:kind agari-group)
-      :couple :tanki
-      :tris :shanpon
-      :straight (match [(group/expand agari-group) (:value agaripai)]
-                  [[agaripai _ _] 7] :penchan
-                  [[agaripai _ _] _] :ryanmen
-                  [[_ agaripai _] _] :kanchan
-                  [[_ _ agaripai] 3] :penchan
-                  [[_ _ agaripai] _] :ryanmen))))
+  (let [groups (groups-only (full hand))]
+    (when-let [agari-group (first (filter (partial group/in? agaripai) groups))]
+      (case (:kind agari-group)
+        :couple :tanki
+        :tris :shanpon
+        :straight (match [(group/expand agari-group) (:value agaripai)]
+                    [[agaripai _ _] 7] :penchan
+                    [[agaripai _ _] _] :ryanmen
+                    [[_ agaripai _] _] :kanchan
+                    [[_ _ agaripai] 3] :penchan
+                    [[_ _ agaripai] _] :ryanmen)))))
 
 
 ; Yaku yeeeee
@@ -474,10 +489,15 @@
     nil      (* yakuman 8000)
     (when (> regular 12) 8000)))
 
+(defn intpow [base exp]
+  (loop [acc 1 exp exp]
+    (if (zero? exp) acc
+        (recur (* base acc) (dec exp)))))
+
 (defn basic-points [{:keys [yakuman regular] :as han} fu]
   (cond
     (some? yakuman) (limit-hands han)
-    (<= 1 regular 4) (* fu (Math/pow 2 (+ 2 regular)))
+    (<= 1 regular 4) (* fu (intpow 2 (+ 2 regular)))
     (> regular 4) (limit-hands han)))
 
 (defn non-dealer-tsumo [han fu]
@@ -561,53 +581,117 @@
         r (mapcat #(repeat (second %) (first %)) m)]
     r))
 
+(def tiles-sub (comp tile/sort-tiles seq-sub))
+
 (defn possible-couples [tiles]
-  (let [sum (apply + 0 (map :value (filter tile/numeral? tiles)))]
-    (case (mod sum 3)
-      0 #{3 6 9}
-      1 #{2 5 8}
-      2 #{1 4 7})))
+  (let [numerals (filter tile/numeral? tiles)
+        honors (remove tile/numeral? tiles)
+        honor-candidates (map key (filter #(= 2 (val %)) (frequencies honors)))
+        sum (apply + 0 (map :value numerals))
+        possible_values (case (mod sum 3)
+                0 #{3 6 9}
+                1 #{2 5 8}
+                2 #{1 4 7})
+        numeral-candidates (filter #(contains? possible_values (:value %)) numerals)]
+    (set (concat honor-candidates numeral-candidates))))
 
 (comment
   (possible-couples (mapv tile/man [1 1 1 2 2 2 3 3 3 4 4 4 5 5]))
   (possible-couples (mapv tile/man [1 1 1 2 2 2 3 3 3 4 4 4 6 6]))
   (possible-couples (mapv tile/man [1 1 1 2 2 2 3 3 3 4 4 4 7 7]))
+  (possible-couples (tile/tiles :dragon [:red :red :red :green :green]))
   (possible-couples [])
   )
 
-(defn group-regular-hand
-  ([hand]
-   (when (= (space-left hand) 0)
-     (let [not-visited (vec (remove :kind (:an hand)))
-           visited (vec (filter :kind (:an hand)))]
-       (group-regular-hand hand visited not-visited 0))))
-  ([hand visited not-visited depth]
-   (letfn
-    [(try-consecutive
-       [n]
-       (when (or (not= 2 n) (not-any? group/couple? visited))
-         (let [taken (take n not-visited)]
-           (when (= (count taken) n)
-             (when-let [new-group (group/group taken)]
-               (when (not (group/taatsu? new-group))
-                 (group-regular-hand hand
-                                     (conj visited new-group)
-                                     (vec (nthrest not-visited n))
-                                     (inc depth))))))))
-     (try-straight
-       []
-       (let [tiles-deduped (take 3 (dedupe not-visited))]
-         (when (= (count tiles-deduped) 3)
-           (when-let [group-deduped (group/group tiles-deduped)]
-             (group-regular-hand hand
-                                 (conj visited group-deduped)
-                                 (vec (tile/sort-tiles (seq-sub not-visited tiles-deduped)))
-                                 (inc depth))))))]
-     (case (count not-visited)
-       0 (let [new-hand (assoc hand :an visited)] (when (regular? new-hand) new-hand))
-       1 nil
-       2 (try-consecutive 2)
-       (or (try-consecutive 3) (try-straight) (try-consecutive 2))))))
+(defn group-test1 [tiles]
+  (for [candidate (possible-couples tiles)
+        :let [head (take 2 (filter #(tile/same? % candidate) tiles))]]
+    [(group/group head)
+     (tiles-sub tiles head)]))
+
+(comment
+  (group-test1 (tile/tiles :man [1 1 1 2 2 2 5 5]))
+  )
+
+(defn group-consecutive [n {:keys [visited not-visited]}]
+  (let [taken (take n not-visited)]
+    (when (= (count taken) n)
+      (when-let [new-group (group/group taken)]
+        {:visited (conj visited new-group)
+         :not-visited (vec (nthrest not-visited n))}))))
+
+(defn group-straight [{:keys [visited not-visited]}]
+  (let [tiles-deduped (take 3 (dedupe not-visited))]
+    (when (= (count tiles-deduped) 3)
+      (when-let [group-deduped (group/group tiles-deduped)]
+        {:visited (conj visited group-deduped)
+         :not-visited (tiles-sub not-visited tiles-deduped)}))))
+
+(defn group-skip [{:keys [visited not-visited]}]
+  (when (and (not-empty not-visited) (not-any? #(= (first not-visited) %) visited))
+    {:visited (conj visited (first not-visited))
+     :not-visited (vec (rest not-visited))}))
+
+(defn group-greedy [{:keys [visited not-visited] :as decomposition}]
+  (if (empty? not-visited)
+    visited
+    (recur (or (group-consecutive 4 decomposition)
+               (group-consecutive 3 decomposition)
+               (group-straight decomposition)
+               (group-consecutive 2 decomposition)
+               (group-skip decomposition)))))
+
+(defn ->decomposition [{:keys [tiles groups]}]
+  {:visited groups :not-visited tiles})
+
+(comment
+  (def tg {:groups [(group/tris (tile/pin 1))]
+           :tiles (tile/tiles :man [1 1 2 2 3 3])})
+  (-> (->decomposition tg)
+      (group-greedy)
+      (split-tiles-groups)
+      (regular-shanten))
+  )
+
+(def objective-fn (comp regular-shanten split-tiles-groups))
+
+(defn lower-evaluation [{:keys [visited not-visited] :as decomposition}]
+  (+ 0 (count (remove :kind visited))))
+
+(defn group-branch-n-bound [decomposition]
+  (loop [best (group-greedy decomposition)
+         bound (objective-fn best)
+         queue [decomposition]]
+    (if (empty? queue)
+      best
+      (let [decomp (peek queue)
+            decomp-upper (objective-fn (:visited decomp))
+            branches [(group-consecutive 4 decomp)
+                      (group-consecutive 3 decomp)
+                      (group-straight decomp)
+                      (group-consecutive 2 decomp)
+                      (group-skip decomp)]
+            cut (->> branches
+                     (remove nil?)
+                     (remove #(> (lower-evaluation %) bound)))]
+        (println (:visited decomp))
+        (println decomp-upper bound (map lower-evaluation branches) (:visited decomp))
+        (if (< decomp-upper bound)
+          (recur (:visited decomp) decomp-upper (apply conj (pop queue) cut))
+          (recur best bound (apply conj (pop queue) cut)))))))
+
+(comment
+  (group-branch-n-bound {:not-visited (tile/tiles :man [1 1 1, 1 2 3, 5 5 5, 7 7 7, 9 9])
+                         :visited []})
+  (group-branch-n-bound {:not-visited (tile/tiles :man [1 2 3, 5 5 5, 7 7 7, 9 9])
+                         :visited [(group/tris (tile/man 1))]})
+  (group-branch-n-bound {:not-visited (tile/tiles :man [1 2 2 3 3 4, 5 5, 6 6 7 7 8 8])
+                         :visited []})
+  (group-branch-n-bound {:not-visited (tile/tiles :man [1 1 1 2 3 9 9 9]
+                                                  :sou [1 1 1]
+                                                  :pin [2 2 2])
+                         :visited []})
+  )
 
 (defn group-chiitoitsu-hand [hand]
   (when (and (empty? (:min hand)) (= 14 (count (:an hand))))
@@ -620,56 +704,19 @@
   (when (kokushi-musou? hand)
     hand))
 
-(defn- solution-key [hand]
-  (- (shanten hand) (count (groups hand))))
-
-(defn group-incomplete-hand
-  ([hand]
-   (let [not-visited (vec (remove :kind (:an hand)))
-         visited (vec (filter :kind (:an hand)))
-         solutions (group-incomplete-hand visited not-visited 0 0)]
-     (println "Tested" (count solutions) "possibilities")
-     ;;(doseq [s solutions] (println (solution-key (assoc hand :an s)) s))
-     (when (not-empty solutions)
-       (apply min-key solution-key (map #(assoc hand :an %) solutions)))))
-  ([visited not-visited value depth]
-   (letfn
-    [(consecutive
-       [n]
-       (let [taken (take n not-visited)]
-         (when (= (count taken) n)
-           (when-let [new-group (group/group taken)]
-             (group-incomplete-hand (conj visited new-group)
-                                    (vec (nthrest not-visited n))
-                                    (+ value (if (= n 3) 2 1))
-                                    (inc depth))))))
-     (straight
-       []
-       (let [tiles-deduped (take 3 (dedupe not-visited))]
-         (when (= (count tiles-deduped) 3)
-           (when-let [group-deduped (group/group tiles-deduped)]
-             (group-incomplete-hand (conj visited group-deduped)
-                                    (vec (tile/sort-tiles (seq-sub not-visited tiles-deduped)))
-                                    (+ value 2)
-                                    (inc depth))))))
-     (skip
-      []
-      (group-incomplete-hand (conj visited (first not-visited))
-                             (rest not-visited)
-                             value
-                             (inc depth)))]
-     (case (count not-visited)
-       0 [visited]
-       1 (skip)
-       2 (concat (consecutive 2) (skip))
-       (concat (consecutive 3) (consecutive 2) (straight) (skip))))))
+(defn group-regular-hand [hand]
+  (->> hand
+       (:an)
+       (split-tiles-groups)
+       (->decomposition)
+       (group-branch-n-bound)
+       (assoc hand :an)))
 
 (defn grouped [hand]
   (let [sorted-hand (update hand :an tile/sort-tiles)]
     (or (group-kokushi-hand sorted-hand)
         (group-regular-hand sorted-hand)
         (group-chiitoitsu-hand sorted-hand)
-        (group-incomplete-hand sorted-hand)
         sorted-hand)))
 
 (comment
