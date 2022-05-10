@@ -11,9 +11,12 @@ Clojure and should be easy to run on your PC.
 The other one is made with [reagent], written in ClojureScript and is meant for
 the web (this version should run even on Android).
 
-Clone this repo and run `clj -Xmain` to launch the cljfx GUI.
-Run `clj -M --main cljs.main --compile reagent.core --repl`
-to launch an interactive REPL and a web browser with the reagent GUI.
+1. Clone this repo with submodules:
+`git clone --recursive https://github.com/Elinvention/riichi-keisanki.git`
+2. Depending on which GUI you want:
+    - Run `clj -Xmain` to launch the cljfx GUI.
+    - Run `clj -M --main cljs.main --compile reagent.core --repl` to launch an
+    interactive REPL and a web browser with the reagent GUI.
 
 It can take a while to start as it has to compile initially.
 
