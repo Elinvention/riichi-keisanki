@@ -1,0 +1,22 @@
+{
+    "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+    "name": "Riichi Keisanki",
+    "short_name": "RiichiKeisanki",
+    "start_url": "index.html",
+    "display": "standalone",
+    "background_color": "#fff",
+    "description": "A Riichi Mahjong companion app.",
+    "icons": [{
+      "src": "resources/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }, {
+        "src": "resources/icon.png",
+        "sizes": "128x128",
+        "type": "image/png"
+    }, {
+        "src": "resources/icon.webp",
+        "sizes": "128x128",
+        "type": "image/webp"
+    }]
+}
