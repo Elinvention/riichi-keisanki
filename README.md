@@ -12,7 +12,7 @@ The other one is made with [reagent], written in ClojureScript and is meant for
 the web (this version should run even on Android).
 
 1. Clone this repo with submodules:
-`git clone --recursive https://github.com/Elinvention/riichi-keisanki.git`
+`git clone --recurse-submodules https://github.com/Elinvention/riichi-keisanki.git`
 2. Depending on which GUI you want:
     - Run `clj -Xmain` to launch the cljfx GUI.
     - Run `clj -M --main cljs.main --compile reagent.core --repl` to launch an
