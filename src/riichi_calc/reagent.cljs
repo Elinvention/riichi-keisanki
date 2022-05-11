@@ -27,9 +27,8 @@
   [:image {:width 54 :xlinkHref (url-from-name theme "Back")}])
 
 (defn svg-tile [theme tile rotated]
-  [:svg {:xmlns "http://www.w3.org/2000/svg" :xmlnsXlink "http://www.w3.org/1999/xlink"
+  [:svg.tile {:xmlns "http://www.w3.org/2000/svg" :xmlnsXlink "http://www.w3.org/1999/xlink"
          :view-box "0 0 54 72"
-         :width 54
          :transform (if rotated "rotate(90)" "")
          :style (if rotated {:margin "0 10px 0 10px"} {})}
    (if (some? tile)
