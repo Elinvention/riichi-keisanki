@@ -1,5 +1,6 @@
 (ns riichi-calc.reagent
   (:require [clojure.string :refer [capitalize]]
+            [clojure.core.match :refer [match]]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [riichi-calc.tile :as tile]
@@ -72,8 +73,15 @@
                     (swap! *state assoc-in [:hand :agaripai] tile))
                   (when (some #{tile} (hand/expand hand))
                     (swap! *state assoc-in [:hand :agaripai] tile))))
-    (when (= (hand/space-left hand) 2)
-      (swap! *state assoc :keyboard-mode :agaripai))))
+    (let [space (hand/space-left (:hand @*state))
+          agaripai (:agaripai hand)
+          next-kmode (match [space agaripai keyboard-mode]
+                       [1 nil _] :agaripai
+                       [0 nil _] :agaripai
+                       [(_ :guard #(< % 3)) _ (:or :chii :pon :kan :ankan)] :an
+                       :else keyboard-mode)]
+      (when (not= next-kmode keyboard-mode)
+        (swap! *state assoc :keyboard-mode next-kmode)))))
 
 (defn keyboard-key [layout tile enabled]
   (let [plain-tile (svg-tile layout tile false)]
