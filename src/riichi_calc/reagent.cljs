@@ -187,6 +187,7 @@
   (let [{:keys [hand theme]} @*state]
     [:div
      [:p (str hand " " (count (:an hand)) "an")]
+     [:button {:on-click #(reset! *state initial-state)} "Reset"]
      [:div
       (wind-button (tile/wind (:bakaze hand)) :bakaze theme)
       (wind-button (tile/wind (:jikaze hand)) :jikaze theme)
