@@ -21,23 +21,26 @@
   (url-from-name theme (tile/tile-name tile)))
 
 (defn front-tile [theme]
-  [:image {:width 54 :xlinkHref (url-from-name theme "Front")}])
+  [:image {:width 54 :xlinkHref (url-from-name theme "Front")
+           :on-drag-start #(.preventDefault %)}])
 
 (defn back-tile [theme]
-  [:image {:width 54 :xlinkHref (url-from-name theme "Back")}])
+  [:image {:width 54 :xlinkHref (url-from-name theme "Back")
+           :on-drag-start #(.preventDefault %)}])
 
 (defn svg-tile [theme tile rotated]
-  [:svg.tile {:xmlns "http://www.w3.org/2000/svg" :xmlnsXlink "http://www.w3.org/1999/xlink"
-         :view-box "0 0 54 72"
-         :transform (if rotated "rotate(90)" "")
-         :style (if rotated {:margin "0 10px 0 10px"} {})}
+  [:svg.tile {:xmlns "http://www.w3.org/2000/svg"
+              :xmlnsXlink "http://www.w3.org/1999/xlink"
+              :view-box "0 0 54 72"
+              :transform (if rotated "rotate(90)" "")
+              :style (if rotated {:margin "0 10px 0 10px"} {})}
    (if (some? tile)
      [:g [front-tile theme]
-           [:image {:width 45 :xlinkHref (url theme tile) :transform "translate(4, 5)"}]]
+           [:image {:xlinkHref (url theme tile)
+                    :width 45
+                    :transform "translate(4, 5)"
+                    :on-drag-start #(.preventDefault %)}]]
      [back-tile theme])])
-
-(defn vector-insert [v el pos]
-  (vec (concat (subvec v 0 pos) [el] (subvec v pos))))
 
 (defn remove-from-hand [path index]
   (swap! *state update-in [:hand path]
