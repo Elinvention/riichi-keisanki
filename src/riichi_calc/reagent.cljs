@@ -75,10 +75,11 @@
     (when (= (hand/space-left hand) 2)
       (swap! *state assoc :keyboard-mode :agaripai))))
 
-(defn keyboard-key [layout tile]
-  (assoc-in (svg-tile layout tile false)
-            [1 :on-click]
-            #(keyboard-input tile)))
+(defn keyboard-key [layout tile enabled]
+  (let [plain-tile (svg-tile layout tile false)]
+    (if enabled
+      (assoc-in plain-tile [1 :on-click] #(keyboard-input tile))
+      (update-in plain-tile [1 :style] assoc :opacity "50%"))))
 
 (defn radio-group [group-name options value on-change legend]
   [:fieldset [:legend legend]
@@ -91,16 +92,51 @@
                               :on-change #(on-change option)}]
                      [:label {:for (name option)} (capitalize (name option))]])])
 
+(defn checkboxes [legend boxes checks]
+  [:fieldset [:legend legend]
+   (for [box boxes]
+     ^{:key box} [:span
+                  [:input {:type :checkbox
+                           :name (name box)
+                           :value (name box)
+                           :id (name box)
+                           :checked (box checks)
+                           :on-change #(swap! *state update box not)}]
+                  [:label {:for (name box)} (capitalize (name box))]])])
+
+(defn can-input? [{:keys [keyboard-mode hand akadora]} tile ukeire]
+  (case keyboard-mode
+    :an (hand/can-add-tile? hand tile)
+    :chii (if akadora
+            (hand/can-add-red-chii? hand tile)
+            (hand/can-add-chii? hand tile))
+    :pon (hand/can-add-pon? hand tile)
+    :kan (hand/can-add-kan? hand tile)
+    :ankan (hand/can-add-kan? hand tile)
+    :dorahyouji (hand/can-add-dorahyouji? hand tile)
+    :agaripai (if (> (hand/space-left hand) 0)
+                (if (not-empty ukeire)
+                  (some (partial tile/same? tile) ukeire)
+                  (hand/can-add-tile? hand tile))
+                (some #{tile} (hand/expand-groups (:an hand))))))
+
 (defn keyboard-render []
-  (let [{:keys [keyboard-mode theme hand]} @*state]
-    [:div (for [nine-tile (partition 9 9 nil (for [t tile/all-34-tiles]
-                                               ^{:key (tile/tile-name t)} [keyboard-key theme t]))]
+  (let [{:keys [keyboard-mode theme hand akadora] :as state} @*state
+        ukeire (if (= (hand/space-left hand) 1) (hand/ukeire hand) [])
+        key-tiles (for [t tile/all-34-tiles
+                        :let [akat (if (and akadora (= 5 (:value t)))
+                                     (assoc t :red true) t)
+                              enabled (can-input? state akat ukeire)]]
+                    ^{:key (str (url theme akat) enabled)}
+                    [keyboard-key theme akat enabled])]
+    [:div (for [nine-tile (partition 9 9 nil key-tiles)]
             ^{:key nine-tile} [:span {:style {:display :inline-block}} nine-tile])
      (radio-group "keyboard-mode"
                   [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
                   keyboard-mode
                   #(swap! *state assoc :keyboard-mode %1)
                   "Keyboard mode:")
+     (checkboxes "Akadora" [:akadora] @*state)
      (radio-group "agari"
                   [:tsumo :ron]
                   (:agari hand)
