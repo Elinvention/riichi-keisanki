@@ -159,6 +159,17 @@
    (assoc-in (svg-tile (:theme @*state) tile false) [1 :on-click]
              #(swap! *state assoc-in [:hand :agaripai] nil))])
 
+(defn dorahyouji-tile [tile index]
+  (cond-> (svg-tile (:theme @*state) tile false)
+    tile (assoc-in [1 :on-click] #(remove-from-hand :dorahyouji index))))
+
+(defn dorahyouji-widget [{:keys [extra-yaku dorahyouji]}]
+  [:div.tile-button "Dorahyouji" [:br]
+   (let [n (if (contains? extra-yaku :riichi) 10 5)
+              doras (take n (lazy-cat dorahyouji (repeat nil)))]
+    (for [[index dora] (map-indexed vector doras)]
+      ^{:key (str index dora)} [dorahyouji-tile dora index]))])
+
 (defn- advance-wind [wind]
   (swap! *state update-in [:hand wind] tile/wind-next))
 
@@ -191,7 +202,8 @@
      [:div
       (wind-button (tile/wind (:bakaze hand)) :bakaze theme)
       (wind-button (tile/wind (:jikaze hand)) :jikaze theme)
-      (agaripai-view (:agaripai hand))]
+      (agaripai-view (:agaripai hand))
+      (dorahyouji-widget hand)]
      (concat (hand-an-render (:an hand)) (hand-min-render (:min hand)))]))
 
 (defn result-win [{:keys [yakus han fu score]}]
