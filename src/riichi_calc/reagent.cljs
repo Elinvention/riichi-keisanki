@@ -124,7 +124,7 @@
     :dorahyouji (hand/can-add-dorahyouji? hand tile)
     :agaripai (if (> (hand/space-left hand) 0)
                 (if (not-empty ukeire)
-                  (some (partial tile/same? tile) ukeire)
+                  (contains? ukeire tile)
                   (hand/can-add-tile? hand tile))
                 (some #{tile} (hand/expand-groups (:an hand))))))
 

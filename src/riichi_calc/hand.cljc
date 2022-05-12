@@ -771,7 +771,7 @@
    If the shanten is -1 that tile is a winning one."
   [hand]
   (let [tiles (expand hand)]
-    (->> tile/all-34-tiles
+    (->> tile/all-34-tiles-with-redfives
          (filter #(< (tile/min-distance tiles %) 2))  ;; for each tile near one in the hand
          (filter (partial can-add-tile? hand))  ;; that can be added to the hand
          (debug->> identity)
