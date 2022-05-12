@@ -127,7 +127,7 @@
     :ankan (hand/can-add-kan? hand tile)
     :dorahyouji (hand/can-add-dorahyouji? hand tile)
     :agaripai (if (> (hand/space-left hand) 0)
-                (if ukeire (some (partial tile/same? tile) ukeire) (hand/can-add-tile? hand tile))
+                (if ukeire (contains? ukeire tile) (hand/can-add-tile? hand tile))
                 (some #{tile} (hand/expand-groups (:an hand))))))
 
 (defn- keyboard-key-button [{:keys [tile disable theme]}]
