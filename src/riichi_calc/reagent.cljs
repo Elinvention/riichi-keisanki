@@ -89,8 +89,8 @@
       (assoc-in plain-tile [1 :on-click] #(keyboard-input tile))
       (update-in plain-tile [1 :style] assoc :opacity "50%"))))
 
-(defn radio-group [group-name options value on-change legend]
-  [:fieldset [:legend legend]
+(defn radio-group [group-name options value on-change]
+  [:div
    (for [option options]
      ^{:key option} [:span
                      [:input {:type :radio
@@ -100,9 +100,8 @@
                               :on-change #(on-change option)}]
                      [:label {:for (name option)} (capitalize (name option))]])])
 
-(defn checkboxes [legend boxes checks]
-  [:fieldset [:legend legend]
-   (for [box boxes]
+(defn checkboxes [boxes checks]
+  (for [box boxes]
      ^{:key box} [:span
                   [:input {:type :checkbox
                            :name (name box)
@@ -110,7 +109,7 @@
                            :id (name box)
                            :checked (box checks)
                            :on-change #(swap! *state update box not)}]
-                  [:label {:for (name box)} (capitalize (name box))]])])
+                  [:label {:for (name box)} (capitalize (name box))]]))
 
 (defn can-input? [{:keys [keyboard-mode hand akadora]} tile ukeire]
   (case keyboard-mode
@@ -128,28 +127,44 @@
                   (hand/can-add-tile? hand tile))
                 (some #{tile} (hand/expand-groups (:an hand))))))
 
-(defn keyboard-render []
-  (let [{:keys [keyboard-mode theme hand akadora] :as state} @*state
-        ukeire (if (= (hand/space-left hand) 1) (hand/ukeire hand) [])
+(defn theme-widget [theme]
+  [:fieldset [:legend "Theme"]
+   [radio-group "theme" [:regular :black] theme #(swap! *state assoc :theme %)]])
+
+(defn keyboard-widget [{:keys [theme hand akadora] :as state}]
+  (let [ukeire (if (= (hand/space-left hand) 1) (hand/ukeire hand) [])
         key-tiles (for [t tile/all-34-tiles
                         :let [akat (if (and akadora (= 5 (:value t)))
                                      (assoc t :red true) t)
                               enabled (can-input? state akat ukeire)]]
                     ^{:key (str (url theme akat) enabled)}
                     [keyboard-key theme akat enabled])]
-    [:div (for [nine-tile (partition 9 9 nil key-tiles)]
-            ^{:key nine-tile} [:span {:style {:display :inline-block}} nine-tile])
-     (radio-group "keyboard-mode"
-                  [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
-                  keyboard-mode
-                  #(swap! *state assoc :keyboard-mode %1)
-                  "Keyboard mode:")
-     (checkboxes "Akadora" [:akadora] @*state)
-     (radio-group "agari"
-                  [:tsumo :ron]
-                  (:agari hand)
-                  #(swap! *state assoc-in [:hand :agari] %1)
-                  "Agari:")]))
+    [:div
+     (for [nine-tile (partition 9 9 nil key-tiles)]
+      ^{:key nine-tile} [:span {:style {:display :inline-block}} nine-tile])]))
+
+(defn keyboard-mode-widget [keyboard-mode akadora]
+  [:fieldset [:legend "Keyboard mode:"]
+   (radio-group "keyboard-mode"
+                [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
+                keyboard-mode
+                #(swap! *state assoc :keyboard-mode %1))
+   (checkboxes [:akadora] {:akadora akadora})])
+
+(defn agari-widget [agari]
+  [:fieldset [:legend "Agari:"]
+   (radio-group "agari"
+                [:tsumo :ron]
+                agari
+                #(swap! *state assoc-in [:hand :agari] %1))])
+
+(defn keyboard-render []
+  (let [{:keys [keyboard-mode theme hand akadora] :as state} @*state]
+    [:div
+     [theme-widget theme]
+     [keyboard-widget state]
+     [keyboard-mode-widget keyboard-mode akadora]
+     [agari-widget (:agari hand)]]))
 
 (defn hand-tile [tile path pos rotated]
   [assoc-in (svg-tile (:theme @*state) tile rotated) [1 :on-click] #(remove-from-hand path pos)])
@@ -197,7 +212,6 @@
 (defn hand-render []
   (let [{:keys [hand theme]} @*state]
     [:div
-     [:p (str hand " " (count (:an hand)) "an")]
      [:button {:on-click #(reset! *state initial-state)} "Reset"]
      [:div
       (wind-button (tile/wind (:bakaze hand)) :bakaze theme)
