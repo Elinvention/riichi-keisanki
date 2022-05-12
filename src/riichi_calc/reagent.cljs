@@ -194,17 +194,22 @@
       (agaripai-view (:agaripai hand))]
      (concat (hand-an-render (:an hand)) (hand-min-render (:min hand)))]))
 
+(defn result-win [{:keys [yakus han fu score]}]
+  [:section
+   [:h4 "Yaku:"]
+   [:table [:thead [:tr [:th "Name"] [:th "Value"]]]
+    [:tbody
+     (for [yaku yakus]
+       ^{:key (str (key yaku) (val yaku))}
+       [:tr [:td (capitalize (name (key yaku)))] [:td (val yaku)]])
+     [:tr.total [:td "Total"] [:td (hand/string-of-han han fu)]]
+     [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]]])
+
 (defn results-render []
   (let [res (hand/results (:hand @*state))]
     (case (:type res)
       (:incomplete :tenpai :invalid :agaripai :no-yaku) [:p (:summary res)]
-      :winning [:section
-                [:h4 "Yaku:"]
-                [:table [:tr [:th "Name"] [:th "Value"]]
-                 (for [yaku (:yakus res)]
-                       ^{:key yaku}[:tr [:td (capitalize (name (key yaku)))] [:td (val yaku)]])
-                 [:tr.total [:td "Total"] [:td (hand/string-of-han (:han res) (:fu res))]]
-                 [:tr.score [:td "Score"] [:td (hand/string-of-score (:score res))]]]])))
+      :winning (result-win res))))
 
 (defn ^:export run []
   (rdom/render [keyboard-render] (js/document.getElementById "keyboard"))
