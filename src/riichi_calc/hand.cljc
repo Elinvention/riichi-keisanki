@@ -674,11 +674,13 @@
   (+ 0 (count (remove :kind visited))))
 
 (defn group-branch-n-bound [decomposition]
+  ;;(println "group-branch-n-bound" (:not-visited decomposition))
   (loop [best (group-greedy decomposition)
          bound (objective-fn best)
-         queue [decomposition]]
-    (if (empty? queue)
-      best
+         queue [decomposition]
+         steps 0]
+    (if (or (empty? queue) (= -1 bound))
+      (do (println "BnB found solution in" steps "steps") best)
       (let [decomp (peek queue)
             decomp-upper (objective-fn (:visited decomp))
             branches [(group-consecutive 4 decomp)
@@ -689,11 +691,10 @@
             cut (->> branches
                      (remove nil?)
                      (remove #(> (lower-evaluation %) bound)))]
-        (println (:visited decomp))
-        (println decomp-upper bound (map lower-evaluation branches) (:visited decomp))
+        ;;(println steps decomp-upper bound (count cut))
         (if (< decomp-upper bound)
-          (recur (:visited decomp) decomp-upper (apply conj (pop queue) cut))
-          (recur best bound (apply conj (pop queue) cut)))))))
+          (recur (:visited decomp) decomp-upper (apply conj (pop queue) cut) (inc steps))
+          (recur best bound (apply conj (pop queue) cut) (inc steps)))))))
 
 (comment
   (group-branch-n-bound {:not-visited (tile/tiles :man [1 1 1, 1 2 3, 5 5 5, 7 7 7, 9 9])
