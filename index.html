@@ -8,12 +8,16 @@
     <link rel="icon" type="image/png" href="resources/icon.png">
     <title>リーチ計算機 Riichi Keisanki</title>
     <style>
-      svg {
-        margin-right: 2px;
-      }
       #hand {
         background-color: forestgreen;
         padding: 1em;
+      }
+      #hand-properties {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 10px 0;
       }
       .tile-button {
         display: inline-block;
@@ -21,7 +25,23 @@
       .tile {
         max-width: 10vw;
         max-height: 72px;
+        width: 54px;
         user-select: none;
+      }
+      .tile-row {
+        display: inline-flex;
+        flex-wrap: nowrap;
+        gap: 2px;
+        min-height: 72px;
+      }
+      #tile-keyboard {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        margin: 20px 0;
+      }
+      fieldset {
+        border-radius: 10px;
       }
     </style>
   </head>
