@@ -771,7 +771,11 @@
   "Brute force ukeire: build a new hand with a tile added and recompute it's shanten.
    If the shanten is -1 that tile is a winning one."
   [hand]
-  (let [tiles (expand hand)]
+  (let [grouped-hand (grouped hand)
+        remaining-tiles (tiles-only (:an grouped-hand))
+        groups (groups-only (:an grouped-hand))
+        to-expand (filter (fn [group] (some #(< (tile/min-distance remaining-tiles %) 2) (expand group))) groups)
+        tiles (concat remaining-tiles (expand-groups to-expand))]
     (->> tile/all-34-tiles-with-redfives
          (filter #(< (tile/min-distance tiles %) 2))  ;; for each tile near one in the hand
          (filter (partial can-add-tile? hand))  ;; that can be added to the hand
@@ -783,6 +787,10 @@
          (filter #(valid? (:hand %)))  ;; check if it's a valid hand
          (map :tile)  ;; get back the added tiles
          (set))))  ;; put them in a set
+
+(comment
+  (def h (hand :an (tile/tiles :man (range 1 10) :pin [1 1 1 5])))
+  (time (ukeire h)))
 
 (defn string-of-score [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]}]
   (cond
