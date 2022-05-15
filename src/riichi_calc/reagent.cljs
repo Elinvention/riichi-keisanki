@@ -49,7 +49,9 @@
          #(into (subvec % 0 index) (subvec % (inc index)))))
 
 (defn play-tile-down-sfx []
-  (-> (js/document.getElementById "klick4") .play))
+  (let [domaudio (js/document.getElementById "klick4")]
+    (set! (.-currentTime domaudio) 0)
+    (.play domaudio)))
 
 (defn update-in-hand [path f tile]
   (play-tile-down-sfx)
