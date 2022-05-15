@@ -65,6 +65,18 @@
 (defn count-redfive [hand]
   (count (filter group/redfive? (full hand))))
 
+(defn dora? [{:keys [dorahyouji] :as hand} tile]
+  (->> dorahyouji
+       (map tile/tile-next)
+       (set)
+       (some (partial tile/same? tile))
+       (boolean)))
+
+(comment
+  (dora? (hand) (tile/man 2))
+  (dora? (hand :dorahyouji [(tile/man 1)]) (tile/man 2))
+  )
+
 (defn count-doras [{:keys [dorahyouji] :as hand}]
   (apply + (map #(group/count-doras % dorahyouji) (full hand))))
 

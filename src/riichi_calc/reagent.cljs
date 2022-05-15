@@ -36,11 +36,12 @@
               :transform (if rotated "rotate(90)" "")
               :style (if rotated {:margin "0 10px 0 10px"} {})}
    (if (some? tile)
-     [:g [front-tile theme]
-           [:image {:xlinkHref (url theme tile)
-                    :width 45
-                    :transform "translate(4, 5)"
-                    :on-drag-start #(.preventDefault %)}]]
+     [:g
+      [front-tile theme]
+      [:image {:xlinkHref (url theme tile)
+               :width 45
+               :transform "translate(4, 5)"
+               :on-drag-start #(.preventDefault %)}]]
      [back-tile theme])])
 
 (defn remove-from-hand [path index]
@@ -186,8 +187,10 @@
      [keyboard-widget state]
      [keyboard-mode-widget keyboard-mode akadora]]))
 
-(defn hand-tile [tile path pos rotated]
-  [assoc-in (svg-tile (:theme @*state) tile rotated) [1 :on-click] #(remove-from-hand path pos)])
+(defn hand-tile [tile path pos rotated dora]
+  (cond-> (svg-tile (:theme @*state) tile rotated)
+    true (assoc-in [1 :on-click] #(remove-from-hand path pos))
+    dora (assoc-in [1 :class] "dora")))
 
 (defn agaripai-view [tile]
   [:div.tile-button "Agaripai" [:br]
@@ -212,22 +215,26 @@
   [:div.tile-button (capitalize (name kind)) [:br]
    (assoc-in (svg-tile theme wind false) [1 :on-click] #(advance-wind kind))])
 
-(defn- hand-an-render [an]
+(defn- hand-an-render [{:keys [an] :as hand}]
   (reduce
    (fn [val [i group-or-tile]]
      (if (group/group? group-or-tile)
        (concat val
                (for [[j tile] (map-indexed vector (group/expand group-or-tile))]
-                 ^{:key (str "an" tile i j)} [hand-tile (when (< 0 j 3) tile) :an i false]))
-       (conj val ^{:key (str "an" group-or-tile i)} [hand-tile group-or-tile :an i false])))
+                 ^{:key (str "an" tile i j)}
+                 [hand-tile (when (< 0 j 3) tile) :an i false (hand/dora? hand tile)]))
+       (conj val
+             ^{:key (str "an" group-or-tile i)}
+             [hand-tile group-or-tile :an i false (hand/dora? hand group-or-tile)])))
    []
    (map-indexed vector an)))
 
-(defn- hand-min-render [min]
+(defn- hand-min-render [{:keys [min] :as hand}]
   (for [[index group] (map-indexed vector min)
         [i tile] (map-indexed vector (group/expand group))]
         ;;{:fx/type min-view :tile tile :index index :rotate (if (= i 0) 90 0) :theme theme}
-    ^{:key (str "min" tile index i)} [hand-tile tile :min index (= i 0)]))
+    ^{:key (str "min" tile index i)}
+    [hand-tile tile :min index (= i 0) (hand/dora? hand tile)]))
 
 (defn hand-render []
   (let [{:keys [hand theme]} @*state]
@@ -240,7 +247,7 @@
       (dorahyouji-widget hand)
       [agari-widget (:agari hand)]
       [extra-yaku-widget (:extra-yaku hand)]]
-     [:div.tile-row (concat (hand-an-render (:an hand)) (hand-min-render (:min hand)))]]))
+     [:div.tile-row (concat (hand-an-render hand) (hand-min-render hand))]]))
 
 (defn result-win [{:keys [yakus han fu score]}]
   [:section

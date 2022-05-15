@@ -27,6 +27,28 @@
         max-height: 72px;
         width: 54px;
         user-select: none;
+        transition: scale 0.1s cubic-bezier(1,0,0,1);
+      }
+      .tile:hover {
+        scale: 105%;
+      }
+      .dora {
+        animation-name: dora;
+        animation-duration: 4s;
+        animation-timing-function: ease;
+        animation-iteration-count: infinite;
+        animation-direction: alternate;
+      }
+      @keyframes dora {
+        0%, 42%, 58%, 100% {
+          rotate: 0deg;
+        }
+        45%, 50%, 55% {
+          rotate: 3deg;
+        }
+        48%, 52% {
+          rotate: -3deg;
+        }
       }
       .tile-row {
         display: inline-flex;
