@@ -48,29 +48,36 @@
   (swap! *state update-in [:hand path]
          #(into (subvec % 0 index) (subvec % (inc index)))))
 
+(defn play-tile-down-sfx []
+  (-> (js/document.getElementById "klick4") .play))
+
+(defn update-in-hand [path f tile]
+  (play-tile-down-sfx)
+  (swap! *state update-in [:hand path] f tile))
+
 (defn keyboard-input [tile]
   (let [{:keys [hand keyboard-mode akadora]} @*state]
     (case keyboard-mode
       :an (when (hand/can-add-tile? hand tile)
-            (swap! *state update-in [:hand :an] tile/conj-sort-tile tile))
+            (update-in-hand :an tile/conj-sort-tile tile))
       :chii (if akadora
               (when (hand/can-add-red-chii? hand tile)
                 (when-let [red-straight (group/red-straight tile)]
-                  (swap! *state update-in [:hand :min] conj red-straight)))
+                  (update-in-hand :min conj red-straight)))
               (when (hand/can-add-chii? hand tile)
                 (when-let [straight (group/straight tile)]
-                  (swap! *state update-in [:hand :min] conj straight))))
+                  (update-in-hand :min conj straight))))
       :pon (when (hand/can-add-pon? hand tile)
-             (swap! *state update-in [:hand :min] conj (group/tris tile)))
+             (update-in-hand :min conj (group/tris tile)))
       :kan (when (hand/can-add-kan? hand tile)
-             (swap! *state update-in [:hand :min] conj (group/quad tile)))
+             (update-in-hand :min conj (group/quad tile)))
       :ankan (when (hand/can-add-kan? hand tile)
-               (swap! *state update-in [:hand :an] conj (group/quad tile)))
+               (update-in-hand :an conj (group/quad tile)))
       :dorahyouji (when (hand/can-add-dorahyouji? hand tile)
-                    (swap! *state update-in [:hand :dorahyouji] conj tile))
+                    (update-in-hand :dorahyouji conj tile))
       :agaripai (if (> (hand/space-left hand) 0)
                   (when (hand/can-add-tile? hand tile)
-                    (swap! *state update-in [:hand :an] tile/conj-sort-tile tile)
+                    (update-in-hand :an tile/conj-sort-tile tile)
                     (swap! *state assoc-in [:hand :agaripai] tile))
                   (when (some #{tile} (hand/expand hand))
                     (swap! *state assoc-in [:hand :agaripai] tile))))
@@ -267,6 +274,7 @@
       :winning (result-win res))))
 
 (defn ^:export run []
+  (-> (js/document.getElementById "klick4") .play)
   (rdom/render [keyboard-render] (js/document.getElementById "keyboard"))
   (rdom/render [hand-render] (js/document.getElementById "hand"))
   (rdom/render [results-render] (js/document.getElementById "results")))
