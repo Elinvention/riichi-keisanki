@@ -99,21 +99,24 @@
       (assoc-in plain-tile [1 :on-click] #(keyboard-input tile))
       (update-in plain-tile [1 :style] assoc :opacity "50%"))))
 
-(defn radio-group [group-name options value on-change]
+(defn radio-group [options value on-change]
   [:<>
-   (for [option options]
+   (for [option options
+         :let [radio-name (name option)
+               id (str radio-name "-radiobutton")]]
      ^{:key option} [:span
                      [:input {:type :radio
-                              :id (name option)
-                              :name group-name
+                              :id id
+                              :name radio-name
                               :checked (= option value)
                               :on-change #(on-change option)}]
-                     [:label {:for (name option)} (capitalize (name option))]])])
+                     [:label {:for id} (capitalize radio-name)]])])
 
 (defn checkboxes [boxes on-change]
   [:<>
    (for [box boxes
          :let [bname (name (key box))
+               id (str bname "-checkbox")
                checked (get (val box) :checked)
                disabled (get (val box) :disabled)
                closure #(on-change (key box) (not checked))]]
@@ -122,11 +125,11 @@
       [:input {:type :checkbox
                :name bname
                :value bname
-               :id bname
+               :id id
                :checked checked
                :disabled disabled
                :on-change closure}]
-      [:label {:for bname} (capitalize bname)]])])
+      [:label {:for id} (capitalize bname)]])])
 
 (defn can-input? [{:keys [keyboard-mode hand akadora]} tile ukeire]
   (case keyboard-mode
@@ -146,7 +149,7 @@
 
 (defn theme-widget [theme]
   [:fieldset [:legend "Theme"]
-   [radio-group "theme" [:regular :black] theme #(swap! *state assoc :theme %)]])
+   [radio-group [:regular :black] theme #(swap! *state assoc :theme %)]])
 
 (defn keyboard-widget [{:keys [theme hand akadora] :as state}]
   (let [ukeire (if (= (hand/space-left hand) 1) (hand/ukeire hand) [])
@@ -162,16 +165,14 @@
 
 (defn keyboard-mode-widget [keyboard-mode akadora]
   [:fieldset [:legend "Keyboard mode:"]
-   (radio-group "keyboard-mode"
-                [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
+   (radio-group [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
                 keyboard-mode
                 #(swap! *state assoc :keyboard-mode %1))
    (checkboxes {:akadora {:checked akadora}} #(swap! *state update %1 not))])
 
 (defn agari-widget [agari]
   [:fieldset [:legend "Agari:"]
-   (radio-group "agari"
-                [:tsumo :ron]
+   (radio-group [:tsumo :ron]
                 agari
                 #(swap! *state assoc-in [:hand :agari] %1))])
 
@@ -211,11 +212,14 @@
     tile (assoc-in [1 :on-click] #(remove-from-hand :dorahyouji index))))
 
 (defn dorahyouji-widget [{:keys [extra-yaku dorahyouji]}]
-  [:div "Dorahyouji" [:br]
-   (let [n (if (contains? extra-yaku :riichi) 10 5)
-              doras (take n (lazy-cat dorahyouji (repeat nil)))]
-    [:div.tile-row (for [[index dora] (map-indexed vector doras)]
-                     ^{:key (str index dora)} [dorahyouji-tile dora index])])])
+  (let [doras (take 5 (lazy-cat dorahyouji (repeat nil)))
+        uradoras (take 5 (lazy-cat (drop 5 dorahyouji) (repeat nil)))]
+    [:div#dorahyouji "Dorahyouji" [:br]
+     [:div.tile-row (for [[index dora] (map-indexed vector doras)]
+                      ^{:key (str index dora)} [dorahyouji-tile dora index])]
+     (when (contains? extra-yaku :riichi)
+       [:div.tile-row (for [[index dora] (map-indexed vector uradoras)]
+                        ^{:key (str index dora)} [dorahyouji-tile dora index])])]))
 
 (defn- advance-wind [wind]
   (swap! *state update-in [:hand wind] tile/wind-next))
@@ -256,7 +260,7 @@
       (dorahyouji-widget hand)
       [agari-widget (:agari hand)]
       [extra-yaku-widget (:extra-yaku hand)]]
-     [:div.tile-row (concat (hand-an-render hand) (hand-min-render hand))]]))
+     [:div#hand-tiles (concat (hand-an-render hand) (hand-min-render hand))]]))
 
 (defn result-win [{:keys [yakus han fu score]}]
   [:section
