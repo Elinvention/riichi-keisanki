@@ -91,18 +91,17 @@
      (count (tiles-only (full hand)))
      (apply + (map group/virtual-size (groups-only (full hand))))))
 
-(defn count-pairs [{:keys [groups]}]
+(defn count-pairs [groups]
+  {:pre [(some? groups)]}
   (count (filter group/couple? groups)))
 
-(defn count-distinct-not-simples [{:keys [tiles]}]
+(defn count-distinct-not-simples [tiles]
+  {:pre [(some? tiles)]}
   (count (distinct (filter tile/not-simple? tiles))))
 
-(defn count-terminal-pairs [{:keys [groups]}]
+(defn count-terminal-pairs [groups]
+  {:pre [(some? groups)]}
   (count (filter (every-pred group/couple? group/not-simple?) groups)))
-
-(defn count-taatsu
-  [hand]
-  (count (filter group/taatsu? (:an hand))))
 
 ;; shanten basic 8 point rules:
 ;; 8 - 2 * groups - 1 * pairs - 1 * proto
@@ -132,19 +131,20 @@
 
 (defn kokushi-shanten
   "Returns the shanten number of a 13 orphans hand."
-  [{:keys [tiles groups] :as tg}]
+  [{:keys [tiles groups]}]
   {:pre [(every? #(not (:kind %)) tiles)
          (every? :kind groups)]}
-  (- 13 (count-distinct-not-simples tg) (* 2 (min 1 (count-terminal-pairs tg)))))
+  (- 13
+     (count-distinct-not-simples tiles)
+     (* 2 (min 1 (count-terminal-pairs groups)))))
 
 (defn shanten
   "Returns the shanten number of any grouped hand."
   [hand]
-  (let [tg (split-tiles-groups (full hand))]
-    (min
-     (regular-shanten tg)
-     (chiitoitsu-shanten tg)
-     (kokushi-shanten tg))))
+  (min
+   (regular-shanten (split-tiles-groups (full hand)))
+   (chiitoitsu-shanten (split-tiles-groups (:an hand)))
+   (kokushi-shanten (split-tiles-groups (:an hand)))))
 
 (defn tenpai?
   "Returns true if the hand is ready (waiting for the winning tile), else false."
