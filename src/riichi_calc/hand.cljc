@@ -174,8 +174,9 @@
 (defn can-add-kan? [hand tile]
   (and (> (space-left hand) 2) (= (count-tile tile hand) 0)))
 
-(defn can-add-dorahyouji? [{:keys [dorahyouji riichi] :as hand} {:keys [red] :as tile}]
-  (and (< (count dorahyouji) (if riichi 10 5))
+(defn can-add-dorahyouji? [{:keys [dorahyouji extra-yaku] :as hand} {:keys [red] :as tile}]
+  {:pre [(vector? dorahyouji) (set? extra-yaku)]}
+  (and (< (count dorahyouji) (if (contains? extra-yaku :riichi) 10 5))
        (< (count-tile tile hand) 4)
        (or (not red) (= 0 (tile/count-exact tile dorahyouji)))))
 
