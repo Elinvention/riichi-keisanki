@@ -15,28 +15,21 @@
       #hand {
         background-color: forestgreen;
         padding: 1em;
-      }
-      #hand-properties {
-        display: flex;
-        flex-direction: row;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin: 10px 0;
-        align-items: flex-start;
-      }
-      #dorahyouji {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-      #hand-tiles {
         display: flex;
         flex-wrap: wrap;
         gap: 2px;
         min-height: 72px;
       }
-      .tile-button {
-        display: inline-block;
+      #interactive {
+        font-size: small;
+      }
+      #hand-properties {
+        display: flex;
+        flex-direction: row;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin: 10px 0;
+        align-items: flex-start;
       }
       .tile {
         max-width: 10vw;
@@ -71,7 +64,7 @@
         flex-wrap: nowrap;
         gap: 2px;
       }
-      #tile-keyboard {
+      #keyboard {
         display: flex;
         flex-wrap: wrap;
         gap: 2px;
@@ -88,35 +81,45 @@
   <body>
     <h1>リーチ計算機 Riichi Keisanki</h1>
 
-    <div id="keyboard"></div>
-    <div id="hand"></div>
-    <h2>Results</h2>
-    <div id="results"></div>
+    <section id="interactive">
+      <div id="hand-properties"></div>
+      <div id="keyboard"></div>
+      <div id="keyboard-mode"></div>
+      <div id="hand"></div>
+      <div id="settings"></div>
+    </section>
+    
+    <section>
+      <h2>Results</h2>
+      <div id="results"></div>
+    </section>
 
+    <section>
+      <h2>Glossary</h2>
+      <h3>Game</h3>
+      <ul>
+        <li>Bakaze 場風 turn wind</li>
+        <li>Jikaze 自風 (own) seat wind</li>
+        <li>Dorahyoji ドラ表示 dora indicator</li>
+        <li>Agari 和がり generic call for winning a hand</li>
+        <li>Agaripai 和了り牌 winning tile</li>
+        <li>Ron 栄 win by deal in</li>
+        <li>Tsumo 自摸 win by self draw</li>
+        <li>An 暗 "dark" concealed tiles</li>
+        <li>Pon ポン call for open triplet</li>
+        <li>Chii チイ call for open straight</li>
+        <li>Kan 槓 call for open quad</li>
+        <li>Ankan 暗槓 call for concealed kan</li>
+        <li>Akadora 赤ドラ red fives</li>
+      </ul>
+      <h3>役 Yaku</h3>
+      <ul>
+        <li>Riichi 立直 special yaku</li>
+        <li>Ippatsu 一発 "one-shot" win with riichi in 1 turn</li>
+        <li>Chankan 搶槓 win with a tile stolen from an opponent's kan</li>
+      </ul>
+    </section>
 
-    <h2>Glossary</h2>
-    <h3>Game</h3>
-    <ul>
-      <li>Bakaze 場風 turn wind</li>
-      <li>Jikaze 自風 (own) seat wind</li>
-      <li>Dorahyoji ドラ表示 dora indicator</li>
-      <li>Agari 和がり generic call for winning a hand</li>
-      <li>Agaripai 和了り牌 winning tile</li>
-      <li>Ron 栄 win by deal in</li>
-      <li>Tsumo 自摸 win by self draw</li>
-      <li>An 暗 "dark" concealed tiles</li>
-      <li>Pon ポン call for open triplet</li>
-      <li>Chii チイ call for open straight</li>
-      <li>Kan 槓 call for open quad</li>
-      <li>Ankan 暗槓 call for concealed kan</li>
-      <li>Akadora 赤ドラ red fives</li>
-    </ul>
-    <h3>役 Yaku</h3>
-    <ul>
-      <li>Riichi 立直 special yaku</li>
-      <li>Ippatsu 一発 "one-shot" win with riichi in 1 turn</li>
-      <li>Chankan 搶槓 win with a tile stolen from an opponent's kan</li>
-    </ul>
     <audio id="klick4" src="resources/sounds/klick4.ogg"></audio>
     <script src="out/main.js" type="text/javascript"></script>
   </body>

@@ -841,7 +841,7 @@
         (tenpai? gh) (let [uke (ukeire gh)]
                        {:type :tenpai
                         :summary (str "Tenpai! Please choose agaripai (winning tile).\nUkeire: "
-                                      (mapv tile/tile-name uke))
+                                      (s/join ", " (map tile/tile-name uke)))
                         :ukeire uke})
         (not (valid? gh)) (let [shan (shanten gh)]
                             {:type :invalid

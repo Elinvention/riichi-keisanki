@@ -148,28 +148,16 @@
                   (hand/can-add-tile? hand tile))
                 (some #{tile} (hand/expand-groups (:an hand))))))
 
-(defn theme-widget [theme]
+(defn settings-render []
   [:fieldset [:legend "Theme"]
-   [radio-group [:regular :black] theme #(swap! *state assoc :theme %)]])
+   [radio-group [:regular :black] (:theme @*state) #(swap! *state assoc :theme %)]])
 
-(defn keyboard-widget [{:keys [theme hand akadora] :as state}]
-  (let [ukeire (if (= (hand/space-left hand) 1) (hand/ukeire hand) [])
-        key-tiles (for [t tile/all-34-tiles
-                        :let [akat (if (and akadora (= 5 (:value t)))
-                                     (assoc t :red true) t)
-                              enabled (can-input? state akat ukeire)]]
-                    ^{:key (str (url theme akat) enabled)}
-                    [keyboard-key theme akat enabled])]
-    [:div#tile-keyboard
-     (for [nine-tile (partition 9 9 nil key-tiles)]
-      ^{:key nine-tile} [:span.tile-row nine-tile])]))
-
-(defn keyboard-mode-widget [keyboard-mode akadora]
+(defn keyboard-mode-render []
   [:fieldset [:legend "Keyboard mode:"]
    (radio-group [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
-                keyboard-mode
+                (:keyboard-mode @*state)
                 #(swap! *state assoc :keyboard-mode %1))
-   (checkboxes {:akadora {:checked akadora}} #(swap! *state update %1 not))])
+   (checkboxes {:akadora {:checked (:akadora @*state)}} #(swap! *state update %1 not))])
 
 (defn agari-widget [agari]
   [:fieldset [:legend "Agari:"]
@@ -192,11 +180,17 @@
                                     (hand/remove-yaku %1 yaku))))]])
 
 (defn keyboard-render []
-  (let [{:keys [keyboard-mode theme akadora] :as state} @*state]
-    [:<>
-     [theme-widget theme]
-     [keyboard-widget state]
-     [keyboard-mode-widget keyboard-mode akadora]]))
+  (let [{:keys [hand theme akadora] :as state} @*state
+        ukeire (hand/ukeire hand)
+        key-tiles (for [t tile/all-34-tiles
+                        :let [akat (if (and akadora (= 5 (:value t)))
+                                     (assoc t :red true) t)
+                              enabled (can-input? state akat ukeire)]]
+                    ^{:key (str (url theme akat) enabled)}
+                    [keyboard-key theme akat enabled])]
+      [:<>
+       (for [nine-tile (partition 9 9 nil key-tiles)]
+         ^{:key nine-tile} [:span.tile-row nine-tile])]))
 
 (defn hand-tile [tile path pos rotated dora]
   (cond-> (svg-tile (:theme @*state) tile rotated)
@@ -204,7 +198,7 @@
     dora (assoc-in [1 :class] "dora")))
 
 (defn agaripai-view [tile]
-  [:div.tile-button "Agaripai" [:br]
+  [:div.tile-button [:div "Agaripai"]
    (assoc-in (svg-tile (:theme @*state) tile false) [1 :on-click]
              #(swap! *state assoc-in [:hand :agaripai] nil))])
 
@@ -215,7 +209,7 @@
 (defn dorahyouji-widget [{:keys [extra-yaku dorahyouji]}]
   (let [doras (take 5 (lazy-cat dorahyouji (repeat nil)))
         uradoras (take 5 (lazy-cat (drop 5 dorahyouji) (repeat nil)))]
-    [:div#dorahyouji "Dorahyouji" [:br]
+    [:div#dorahyouji [:div "Dorahyouji"]
      [:div.tile-row (for [[index dora] (map-indexed vector doras)]
                       ^{:key (str index dora)} [dorahyouji-tile dora index])]
      (when (contains? extra-yaku :riichi)
@@ -226,7 +220,7 @@
   (swap! *state update-in [:hand wind] tile/wind-next))
 
 (defn- wind-button [wind kind theme]
-  [:div.tile-button (capitalize (name kind)) [:br]
+  [:div.tile-button [:div (capitalize (name kind))]
    (assoc-in (svg-tile theme wind false) [1 :on-click] #(advance-wind kind))])
 
 (defn- hand-an-render [{:keys [an] :as hand}]
@@ -251,17 +245,19 @@
     [hand-tile tile :min index (= i 0) (hand/dora? hand tile)]))
 
 (defn hand-render []
+  (let [{:keys [hand]} @*state]
+    [:<> (concat (hand-an-render hand) (hand-min-render hand))]))
+
+(defn hand-properties-render []
   (let [{:keys [hand theme]} @*state]
     [:<>
-     [:button {:on-click #(reset! *state initial-state)} "Reset"]
-     [:div#hand-properties
-      (wind-button (tile/wind (:bakaze hand)) :bakaze theme)
-      (wind-button (tile/wind (:jikaze hand)) :jikaze theme)
-      (agaripai-view (:agaripai hand))
-      (dorahyouji-widget hand)
-      [agari-widget (:agari hand)]
-      [extra-yaku-widget (:extra-yaku hand)]]
-     [:div#hand-tiles (concat (hand-an-render hand) (hand-min-render hand))]]))
+     (wind-button (tile/wind (:bakaze hand)) :bakaze theme)
+     (wind-button (tile/wind (:jikaze hand)) :jikaze theme)
+     (agaripai-view (:agaripai hand))
+     (dorahyouji-widget hand)
+     [agari-widget (:agari hand)]
+     [extra-yaku-widget (:extra-yaku hand)]
+     [:button {:on-click #(reset! *state initial-state)} "Reset"]]))
 
 (defn result-win [{:keys [yakus han fu score]}]
   [:section
@@ -289,9 +285,12 @@
       :winning (result-win res))))
 
 (defn ^:export run []
-  (-> (js/document.getElementById "klick4") .play)
+  (play-tile-down-sfx)
+  (rdom/render [hand-properties-render] (js/document.getElementById "hand-properties"))
   (rdom/render [keyboard-render] (js/document.getElementById "keyboard"))
+  (rdom/render [keyboard-mode-render] (js/document.getElementById "keyboard-mode"))
   (rdom/render [hand-render] (js/document.getElementById "hand"))
+  (rdom/render [settings-render] (js/document.getElementById "settings"))
   (rdom/render [results-render] (js/document.getElementById "results")))
 
 (run)
