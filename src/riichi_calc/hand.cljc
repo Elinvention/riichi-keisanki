@@ -65,17 +65,12 @@
 (defn count-redfive [hand]
   (count (filter group/redfive? (full hand))))
 
-(defn dora? [{:keys [dorahyouji] :as hand} tile]
+(defn dora? [{:keys [dorahyouji]} tile]
   (->> dorahyouji
        (map tile/tile-next)
        (set)
        (some (partial tile/same? tile))
        (boolean)))
-
-(comment
-  (dora? (hand) (tile/man 2))
-  (dora? (hand :dorahyouji [(tile/man 1)]) (tile/man 2))
-  )
 
 (defn count-doras [{:keys [dorahyouji] :as hand}]
   (apply + (map #(group/count-doras % dorahyouji) (full hand))))
@@ -219,7 +214,7 @@
 
 (defn kokushi-tanki?
   "If you win with kokushi with a tanki wait you get double yakuman"
-  [{:keys [an] :as hand}]
+  [hand]
   (and (kokushi-musou? hand) (= :tanki (machi hand))))
 
 (defn regular? 
@@ -550,17 +545,6 @@
     [:east :tsumo] (dealer-tsumo han fu)
     [_     :tsumo] (non-dealer-tsumo han fu)))
 
-(comment
-  (for [[han fu] [[1 30] [2 30] [3 30] [4 30] [4 50]]]
-    [(basic-points han fu)
-     (dealer-tsumo han fu)
-     (non-dealer-tsumo han fu)
-     ;;(tsumo-score han fu)
-     (dealer-ron han fu)
-     (non-dealer-ron han fu)
-     ;;(ron-score han fu)
-     ]))
-
 (defn round-thousandth [score]
   (-> score (/ 1000) double Math/ceil int))
 
@@ -672,15 +656,6 @@
 (defn ->decomposition [{:keys [tiles groups]}]
   {:visited groups :not-visited tiles})
 
-(comment
-  (def tg {:groups [(group/tris (tile/pin 1))]
-           :tiles (tile/tiles :man [1 1 2 2 3 3])})
-  (-> (->decomposition tg)
-      (group-greedy)
-      (split-tiles-groups)
-      (regular-shanten))
-  )
-
 (def objective-fn (comp regular-shanten split-tiles-groups))
 
 (defn lower-evaluation [{:keys [visited not-visited] :as decomposition}]
@@ -709,67 +684,14 @@
           (recur (:visited decomp) decomp-upper (apply conj (pop queue) cut) (inc steps))
           (recur best bound (apply conj (pop queue) cut) (inc steps)))))))
 
-(comment
-  (group-branch-n-bound {:not-visited (tile/tiles :man [1 1 1, 1 2 3, 5 5 5, 7 7 7, 9 9])
-                         :visited []})
-  (group-branch-n-bound {:not-visited (tile/tiles :man [1 2 3, 5 5 5, 7 7 7, 9 9])
-                         :visited [(group/tris (tile/man 1))]})
-  (group-branch-n-bound {:not-visited (tile/tiles :man [1 2 2 3 3 4, 5 5, 6 6 7 7 8 8])
-                         :visited []})
-  (group-branch-n-bound {:not-visited (tile/tiles :man [1 1 1 2 3 9 9 9]
-                                                  :sou [1 1 1]
-                                                  :pin [2 2 2])
-                         :visited []})
-  )
-
-(defn group-chiitoitsu-hand [hand]
-  (when (and (empty? (:min hand)) (= 14 (count (:an hand))))
-    (let [groups (mapv group/group (partition 2 2 (:an hand)))
-          new-hand (assoc hand :an groups)]
-      (when (chiitoitsu? new-hand)
-        new-hand))))
-
-(defn group-kokushi-atama [hand]
-  (let [couples (partition 2 1 (filter tile/not-simple? (:an hand)))]
-    (if-let [atama (some (fn [couple]
-                           (when-let [new-group (group/group couple)]
-                             (when (group/couple? new-group)
-                               new-group)))
-                         couples)]
-      (let [tiles (seq-sub (:an hand) (group/expand atama))
-            tiles-with-atama (tile/sort-tiles (conj tiles atama))]
-       (assoc hand :an tiles-with-atama))
-      hand)))
-
-(defn group-kokushi-hand [hand]
-  ;; is 6 the correct number?
-  (let [atama (group-kokushi-atama hand)]
-    (when (< (kokushi-shanten (split-tiles-groups (full atama))) 6)
-      atama)))
-
-(defn group-regular-hand [hand]
+(defn grouped [hand]
   (->> hand
        (:an)
+       (tile/sort-tiles)
        (split-tiles-groups)
        (->decomposition)
        (group-branch-n-bound)
        (assoc hand :an)))
-
-(defn grouped [hand]
-  (let [sorted-hand (update hand :an tile/sort-tiles)]
-    (or (group-kokushi-hand sorted-hand)
-        (group-regular-hand sorted-hand)
-        (group-chiitoitsu-hand sorted-hand)
-        sorted-hand)))
-
-(comment
-  (let [h (hand :an (conj (mapv tile/man [2 3 4 5 5]) (group/quad (tile/man 1)))
-                :min (mapv group/tris [(tile/dragon :red) (tile/pin 6)]))]
-    (to-string (grouped h)))
-
-  (let [h (hand :an (mapv tile/man [1 1 2 2 4 4 5 5 7 7 8 8 9 9]))]
-    (to-string (grouped h)))
-  )
 
 (def grouped-hand (comp grouped hand))
 
@@ -806,10 +728,6 @@
            (filter #(valid? (:hand %)))  ;; check if it's a valid hand
            (map :tile)  ;; get back the added tiles
            (set)))))  ;; put them in a set
-
-(comment
-  (def h (hand :an (tile/tiles :man (range 1 10) :pin [1 1 1 5])))
-  (time (ukeire h)))
 
 (defn string-of-score [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]}]
   (cond
