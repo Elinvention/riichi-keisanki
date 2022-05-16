@@ -9,13 +9,13 @@
   [& {:keys [an min agari agaripai bakaze jikaze dorahyouji extra-yaku]
                :or {an [], min [], agari :tsumo, bakaze :east, jikaze :east
                     dorahyouji [] extra-yaku #{}}}]
-  {:an an                 ;; from 暗 concealed tiles
-   :min min               ;; from 明 open tiles
-   :agari agari           ;; from 和了り can be :ron or :tsumo
-   :agaripai agaripai     ;; from 和了り牌
-   :bakaze bakaze         ;; from 場風 
-   :jikaze jikaze         ;; from 自風
-   :dorahyouji dorahyouji ;; from ドラ表示
+  {:an (tile/sort-tiles an)   ;; from 暗 concealed tiles
+   :min (tile/sort-tiles min) ;; from 明 open tiles
+   :agari agari               ;; from 和了り can be :ron or :tsumo
+   :agaripai agaripai         ;; from 和了り牌
+   :bakaze bakaze             ;; from 場風 
+   :jikaze jikaze             ;; from 自風
+   :dorahyouji dorahyouji     ;; from ドラ表示
    :extra-yaku extra-yaku})
 
 (defn to-string [{:keys [an min]}]
