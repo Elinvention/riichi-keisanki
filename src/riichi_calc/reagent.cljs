@@ -51,7 +51,8 @@
 (defn play-tile-down-sfx []
   (let [domaudio (js/document.getElementById "klick4")]
     (set! (.-currentTime domaudio) 0)
-    (.play domaudio)))
+    (-> (.play domaudio)
+        (.catch #(println "Can't play sound:" %)))))
 
 (defn update-in-hand [path f tile]
   (play-tile-down-sfx)
