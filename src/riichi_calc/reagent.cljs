@@ -273,10 +273,18 @@
      [:tr.total [:td "Total"] [:td (hand/string-of-han han fu)]]
      [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]]])
 
+(defn result-tenpai [theme {:keys [ukeire summary]}]
+  [:p summary
+   [:div.tile-row
+    (for [tile ukeire]
+      [svg-tile theme tile false])]])
+
 (defn results-render []
-  (let [res (hand/results (:hand @*state))]
+  (let [{:keys [hand theme]} @*state
+        {:keys [summary] :as res} (hand/results hand)]
     (case (:type res)
-      (:incomplete :tenpai :invalid :agaripai :no-yaku) [:p (:summary res)]
+      (:incomplete :invalid :agaripai :no-yaku) [:p summary]
+      :tenpai (result-tenpai theme res)
       :winning (result-win res))))
 
 (defn ^:export run []
