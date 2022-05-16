@@ -155,6 +155,8 @@
                       10)
     :else 10))
 
+(defn neighbour? [tiles tile]
+  (< (min-distance tiles tile) 2))
 
 ;; Tile sorting and naming
 

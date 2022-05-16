@@ -150,3 +150,6 @@
     :straight 3
     :couple 4
     :taatsu 5))
+
+(defn neighbour? [tiles group]
+  (some (partial tile/neighbour? tiles) (expand group)))

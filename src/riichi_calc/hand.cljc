@@ -782,24 +782,30 @@
 
 (defn ukeire
   "Brute force ukeire: build a new hand with a tile added and recompute it's shanten.
-   If the shanten is -1 that tile is a winning one."
+   If the shanten is -1 that tile is a winning one.
+   The hand must lack only 1 tile."
   [hand]
-  (let [grouped-hand (grouped hand)
-        remaining-tiles (tiles-only (:an grouped-hand))
-        groups (groups-only (:an grouped-hand))
-        to-expand (filter (fn [group] (some #(< (tile/min-distance remaining-tiles %) 2) (expand group))) groups)
-        tiles (concat remaining-tiles (expand-groups to-expand))]
-    (->> tile/all-34-tiles-with-redfives
-         (filter #(< (tile/min-distance tiles %) 2))  ;; for each tile near one in the hand
-         (filter (partial can-add-tile? hand))  ;; that can be added to the hand
-         (debug->> identity)
-         (map #(hash-map :tile % :hand (hand-with-tile hand %)))  ;; build a hand with tile
-         (debug->> #(shanten (:hand %)))
-         (filter #(= (shanten (:hand %)) -1))  ;; check it's shanten
-         (debug->> :tile)
-         (filter #(valid? (:hand %)))  ;; check if it's a valid hand
-         (map :tile)  ;; get back the added tiles
-         (set))))  ;; put them in a set
+  (if (not= 1 (space-left hand))
+    []
+    (let [grouped-hand (grouped hand)
+          remaining-tiles (tiles-only (:an grouped-hand))
+          groups (groups-only (:an grouped-hand))
+          to-expand (concat
+                     (filter (partial group/neighbour? remaining-tiles) groups)
+                     (filter group/taatsu? groups)
+                     (filter group/couple? groups))
+          tiles (concat remaining-tiles (expand-groups to-expand))]
+      (->> tile/all-34-tiles-with-redfives
+           (filter (partial tile/neighbour? tiles))  ;; for each tile near one in the hand
+           (filter (partial can-add-tile? hand))  ;; that can be added to the hand
+           (debug->> identity)
+           (map #(hash-map :tile % :hand (hand-with-tile hand %)))  ;; build a hand with tile
+           (debug->> #(shanten (:hand %)))
+           (filter #(= (shanten (:hand %)) -1))  ;; check it's shanten
+           (debug->> :tile)
+           (filter #(valid? (:hand %)))  ;; check if it's a valid hand
+           (map :tile)  ;; get back the added tiles
+           (set)))))  ;; put them in a set
 
 (comment
   (def h (hand :an (tile/tiles :man (range 1 10) :pin [1 1 1 5])))
