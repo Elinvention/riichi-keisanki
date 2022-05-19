@@ -5,13 +5,15 @@
             [reagent.dom :as rdom]
             [riichi-calc.tile :as tile]
             [riichi-calc.group :as group]
-            [riichi-calc.hand :as hand]))
+            [riichi-calc.hand :as hand]
+            [riichi-calc.yakudb :refer [yakudb]]))
 
 
 (def initial-state {:hand (hand/hand)
                     :keyboard-mode :an
                     :akadora false
-                    :theme :regular})
+                    :theme :regular
+                    :language :romaji})
 
 (def *state (r/atom initial-state))
 
@@ -149,8 +151,11 @@
                 (some #{tile} (hand/expand-groups (:an hand))))))
 
 (defn settings-render []
-  [:fieldset [:legend "Theme"]
-   [radio-group [:regular :black] (:theme @*state) #(swap! *state assoc :theme %)]])
+  [:<>
+   [:fieldset [:legend "Theme"]
+    [radio-group [:regular :black] (:theme @*state) #(swap! *state assoc :theme %)]]
+   [:fieldset [:legend "Yaku Names Language"]
+    [radio-group [:ja :romaji :it :en] (:language @*state) #(swap! *state assoc :language %)]]])
 
 (defn keyboard-mode-render []
   [:fieldset [:legend "Keyboard mode:"]
@@ -259,30 +264,30 @@
      [extra-yaku-widget (:extra-yaku hand)]
      [:button {:on-click #(reset! *state initial-state)} "Reset"]]))
 
-(defn result-win [{:keys [yakus han fu score]}]
-  [:section
-   [:h4 "Yaku:"]
-   [:table [:thead [:tr [:th "Name"] [:th "Value"]]]
-    [:tbody
-     (for [yaku yakus]
-       ^{:key (str (key yaku) (val yaku))}
-       [:tr [:td (capitalize (name (key yaku)))] [:td (val yaku)]])
-     [:tr.total [:td "Total"] [:td (hand/string-of-han han fu)]]
-     [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]]])
+(defn result-win [lang {:keys [yakus han fu score]}]
+  [:table [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
+   [:tbody
+    (for [yaku yakus
+          :let [wiki (get-in yakudb [(key yaku) :wiki])
+                name (get-in yakudb [(key yaku) :name lang] (capitalize (name (key yaku))))]]
+      ^{:key (str (key yaku) (val yaku))}
+      [:tr [:td (if (nil? wiki) name [:a {:href wiki :target "_blank"} name])] [:td (val yaku)]])
+    [:tr.total [:td "Total"] [:td (hand/string-of-han han fu)]]
+    [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]])
 
 (defn result-tenpai [theme {:keys [ukeire summary]}]
   [:p summary
-   [:div.tile-row
+   [:span.tile-row
     (for [tile ukeire]
-      [svg-tile theme tile false])]])
+      ^{:key (str "tenpai" theme (tile/tile-name tile))} [svg-tile theme tile false])]])
 
 (defn results-render []
-  (let [{:keys [hand theme]} @*state
+  (let [{:keys [hand theme language]} @*state
         {:keys [summary] :as res} (hand/results hand)]
     (case (:type res)
       (:incomplete :invalid :agaripai :no-yaku) [:p summary]
       :tenpai (result-tenpai theme res)
-      :winning (result-win res))))
+      :winning (result-win language res))))
 
 (defn ^:export run []
   (play-tile-down-sfx)
