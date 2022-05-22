@@ -1,5 +1,5 @@
 (ns riichi-calc.group
-  (:require clojure.set [riichi-calc.tile :as tile]))
+  (:require [riichi-calc.tile :as tile]))
 
 
 (defrecord Group [tiles kind seed value red])
