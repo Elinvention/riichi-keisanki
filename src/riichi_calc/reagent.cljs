@@ -60,6 +60,10 @@
   (play-tile-down-sfx)
   (swap! *state update-in [:hand path] f tile))
 
+(defn add-agaripai [tile]
+  (update-in-hand :an tile/conj-sort-tile tile)
+  (swap! *state assoc-in [:hand :agaripai] tile))
+
 (defn keyboard-input [tile]
   (let [{:keys [hand keyboard-mode akadora]} @*state]
     (case keyboard-mode
@@ -82,8 +86,7 @@
                     (update-in-hand :dorahyouji conj tile))
       :agaripai (if (> (hand/space-left hand) 0)
                   (when (hand/can-add-tile? hand tile)
-                    (update-in-hand :an tile/conj-sort-tile tile)
-                    (swap! *state assoc-in [:hand :agaripai] tile))
+                    (add-agaripai tile))
                   (when (some #{tile} (hand/expand hand))
                     (swap! *state assoc-in [:hand :agaripai] tile))))
     (let [space (hand/space-left (:hand @*state))
@@ -275,11 +278,16 @@
     [:tr.total [:td "Total"] [:td (hand/string-of-han han fu)]]
     [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]])
 
+(defn ukeire-tile [theme tile]
+  [assoc-in (svg-tile theme tile false) [1 :on-click] #(add-agaripai tile)])
+
 (defn result-tenpai [theme {:keys [ukeire summary]}]
-  [:p summary
-   [:span.tile-row
+  [:<>
+   [:p summary]
+   [:div.tile-row
     (for [tile ukeire]
-      ^{:key (str "tenpai" theme (tile/tile-name tile))} [svg-tile theme tile false])]])
+      ^{:key (str "tenpai" theme (tile/tile-name tile))}
+      [ukeire-tile theme tile])]])
 
 (defn results-render []
   (let [{:keys [hand theme language]} @*state
