@@ -231,8 +231,8 @@
 
 (defn tanyao?
   "A hand composed of only simple (numerals 2-8) tiles."
-  [{:keys [an]}]
-  (every? group/simple? an))
+  [hand]
+  (every? group/simple? (full hand)))
 
 (defn chinroutou?
   "Every group of tiles is composed of terminal tiles."
