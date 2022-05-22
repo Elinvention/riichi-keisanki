@@ -285,7 +285,7 @@
   [:<>
    [:p summary]
    [:div.tile-row
-    (for [tile ukeire]
+    (for [tile (tile/sort-tiles ukeire)]
       ^{:key (str "tenpai" theme (tile/tile-name tile))}
       [ukeire-tile theme tile])]])
 
