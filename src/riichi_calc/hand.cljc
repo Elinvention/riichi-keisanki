@@ -278,8 +278,9 @@
 (defn honitsu?
   "This is a single suit hand mixed with some honor tiles."
   [hand]
-  (and (not (chinitsu? hand))
-       (let [fhand (full hand)]
+  (let [fhand (full hand)]
+    (and (some group/numeral? fhand)
+         (some group/honor? fhand)
          (or (every? (some-fn group/pin? group/honor?) fhand)
              (every? (some-fn group/sou? group/honor?) fhand)
              (every? (some-fn group/man? group/honor?) fhand)))))
