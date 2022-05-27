@@ -705,6 +705,18 @@
        (map :tile)  ;; get back the added tiles
        (set)))
 
+(defn split-ukeire-candidates [{:keys [tiles groups]}]
+  (let [to-expand? (some-fn group/taatsu? group/couple? (partial group/neighbour? tiles))]
+    {:tiles (concat tiles (expand-groups (filter to-expand? groups)))
+     :groups (remove to-expand? groups)}))
+
+(defn ukeire-candidate-tiles [hand]
+  (loop [{:keys [groups] :as tg} (split-tiles-groups (:an (grouped hand)))]
+    (let [{new-tiles :tiles new-groups :groups} (split-ukeire-candidates tg)]
+      (if (= (count new-groups) (count groups))
+        new-tiles
+        (recur {:tiles new-tiles :groups new-groups})))))
+
 (defn regular-ukeire
   "Brute force ukeire: build a new hand with a tile added and recompute it's shanten.
    If the shanten is -1 that tile is a winning one.
@@ -712,14 +724,7 @@
   [hand]
   (if (not= 1 (space-left hand))
     []
-    (let [grouped-hand (grouped hand)
-          remaining-tiles (tiles-only (:an grouped-hand))
-          groups (groups-only (:an grouped-hand))
-          to-expand (concat
-                     (filter (partial group/neighbour? remaining-tiles) groups)
-                     (filter group/taatsu? groups)
-                     (filter group/couple? groups))
-          tiles (concat remaining-tiles (expand-groups to-expand))]
+    (let [tiles (ukeire-candidate-tiles hand)]
       (->> tile/all-34-tiles-with-redfives
            (filter (partial tile/neighbour? tiles))  ;; for each tile near one in the hand
            (filter (partial can-add-tile? hand))  ;; that can be added to the hand
