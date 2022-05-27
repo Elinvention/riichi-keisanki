@@ -367,16 +367,17 @@
 (defn suuankou?
   "This hand is composed of four groups of closed triplets.
   When this hand has a shanpon pattern and the win is via ron, then it would
-  not be counted as such;
-  only as the lesser toitoi with sanankou."
+  not be counted as such; only as the lesser toitoi with sanankou.
+  Suuankou can only be obtained via tsumo. Suuankou tanki can be obtained either
+  way, but must have single wait (tanki)."
   [{:keys [an min agari] :as hand}]
   (and (empty? min)
        (= 4 (count (filter (some-fn group/tris? group/quad?) an)))
-       (or (= agari :tsumo) (= (machi hand) :shanpon))))
+       (= agari :tsumo)))
 
 (defn suuankou-tanki?
   "This hand is composed of four groups of closed triplets. It is awarded when
-   hand is won by tsumo and the hand has a tanki wait."
+   the hand has a tanki wait."
   [{:keys [an min] :as hand}]
   (and (empty? min) (= (machi hand) :tanki)
        (= 4 (count (filter (some-fn group/tris? group/quad?) an)))))
