@@ -405,7 +405,20 @@
   [hand]
   (and (chinitsu? hand)
        (let [f (frequencies (map :value (expand hand)))]
-         (every? identity (map #(>= (get f %1 0) %2) (range 1 10) [3 1 1 1 1 1 1 1 3])))))
+         (every? identity
+                 (map #(>= (get f %1 0) %2) (range 1 10) [3 1 1 1 1 1 1 1 3])))))
+
+(defn junsei-chuuren-poutou?
+  "A hand consisting of the tiles 1112345678999 in the same suit plus any one
+   extra tile of the same suit. "
+  [{:keys [agaripai] :as hand}]
+  (and (chinitsu? hand)
+       (let [tiles (expand hand)
+             [head tail] (split-with (partial not= agaripai) tiles)
+             without-agaripai (concat head (rest tail))
+             f (frequencies (map :value without-agaripai))]
+         (every? identity
+                 (map #(= (get f %1 0) %2) (range 1 10) [3 1 1 1 1 1 1 1 3])))))
 
 (defn suukantsu?
   "Any hand with four calls of kan."
@@ -453,6 +466,7 @@
    :daisuushii      {:fun daisuushii? :han :yakuman}
    :tsuuiisou       {:fun tsuuiisou? :han :yakuman}
    :chuuren-poutou  {:fun chuuren-poutou? :han :yakuman}
+   :junsei-chuuren  {:fun junsei-chuuren-poutou? :han :yakuman}
    :suukantsu       {:fun suukantsu? :han :yakuman}
    :chinroutou      {:fun chinroutou? :han :yakuman}})
 

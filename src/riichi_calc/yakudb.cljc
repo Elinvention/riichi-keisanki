@@ -181,6 +181,11 @@
                            :romaji "Chuuren poutou"
                            :it "Nove cancelli"
                            :en "Nine gates"}}
+   :junsei-chuuren {:wiki "https://riichi.wiki/Chuuren_poutou"
+                    :name {:ja "純正九連宝燈"
+                           :romaji "junsei chuuren poutou"
+                           :it "Nove cancelli puri"
+                           :en "Pure nine gates"}}
    :suukantsu {:wiki "https://riichi.wiki/Suukantsu"
                :name {:ja "四槓子"
                       :romaji "Suukantsu"
