@@ -335,9 +335,17 @@
 (defn sanankou?
   "The hand includes three groups of triplets (or closed quads) that have been
    formed without calling any tiles.
-   The fourth group can be an open triplet or sequence."
-  [{:keys [an]}]
-  (= 3 (count (filter (some-fn group/tris? group/quad?) an))))
+   The fourth group can be an open triplet or sequence.
+   The third must not be completed off of another player's discard, as this
+   would not count as concealed. However, if it is completed with a tsumo, then
+   the yaku is awarded."
+  [{:keys [an agaripai agari]}]
+  (let [triplet-fn (if (= agari :tsumo)
+                     (some-fn group/tris? group/quad?)
+                     (every-pred
+                      (some-fn group/tris? group/quad?)
+                      #(not (group/in? agaripai %))))]
+    (= 3 (count (filter triplet-fn an)))))
 
 (defn sanshoku-doukou?
   "The hand includes three groups of triplets with the same number. "
