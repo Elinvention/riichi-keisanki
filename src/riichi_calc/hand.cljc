@@ -184,18 +184,22 @@
    - :kanchan (closed wait)
    - nil (incomplete hand or wrong agaripai)"
   [{:keys [agaripai] :as hand}]
+  {:pre [(some? hand) (some? (:an hand))]}
   (let [groups (groups-only (full hand))]
     (when-let [agari-group (some #(when (group/in? agaripai %) %) groups)]
-      (case (:kind agari-group)
-        :couple :tanki
-        :tris :shanpon
-        :straight (match [(group/expand agari-group) (:value agaripai)]
-                    [[agaripai _ _] 7] :penchan
-                    [[agaripai _ _] _] :ryanmen
-                    [[_ agaripai _] _] :kanchan
-                    [[_ _ agaripai] 3] :penchan
-                    [[_ _ agaripai] _] :ryanmen)))))
+      (match [(:kind agari-group) (group/expand agari-group) (:value agaripai)]
+        [:couple _ _] :tanki
+        [:tris _ _] :shanpon
+        [:straight [agaripai _ _] 7] :penchan
+        [:straight [agaripai _ _] 7] :penchan
+        [:straight [agaripai _ _] _] :ryanmen
+        [:straight [_ agaripai _] _] :kanchan
+        [:straight [_ _ agaripai] 3] :penchan
+        [:straight [_ _ agaripai] _] :ryanmen))))
 
+(defn juusan-menmachi?
+  [{:keys [agaripai an]}]
+  (contains? (set (tiles-only an)) agaripai))
 
 ; Yaku yeeeee
 (defn chiitoitsu?
@@ -212,12 +216,17 @@
          (every? #(some #{%} exp-an) tile/kokushi-tiles)
          (some (every-pred group/couple? group/not-simple?) an))))
 
-(defn kokushi-tanki?
-  "If you win with kokushi with a tanki wait you get double yakuman"
-  [hand]
-  (and (kokushi-musou? hand) (= :tanki (machi hand))))
+(defn kokushi-musou-juusan-menmachi?
+  "This happens when you have all the tiles required by kokushi musou and the
+   wait is composed of 13 tiles."
+  [{:keys [an min] :as hand}]
+  (let [exp-an (expand-groups an)]
+    (println "machi" (juusan-menmachi? hand))
+    (and (empty? min) (= (count exp-an) 14) (juusan-menmachi? hand)
+         (every? #(some #{%} exp-an) tile/kokushi-tiles)
+         (some (every-pred group/couple? group/not-simple?) an))))
 
-(defn regular? 
+(defn regular?
   "Returns true if the hand is made of 4 groups and a pair."
   [{:keys [an min]}]
   (and (= (+ (count an) (count min)) 5)
@@ -364,7 +373,14 @@
   [{:keys [an min agari] :as hand}]
   (and (empty? min)
        (= 4 (count (filter (some-fn group/tris? group/quad?) an)))
-       (or (not= (machi hand) :shanpon) (= agari :tsumo))))
+       (or (= agari :tsumo) (= (machi hand) :shanpon))))
+
+(defn suuankou-tanki?
+  "This hand is composed of four groups of closed triplets. It is awarded when
+   hand is won by tsumo and the hand has a tanki wait."
+  [{:keys [an min] :as hand}]
+  (and (empty? min) (= (machi hand) :tanki)
+       (= 4 (count (filter (some-fn group/tris? group/quad?) an)))))
 
 (defn shousuushii?
   "This hand has three groups (triplets or quads) of the wind tiles plus a pair of the fourth kind."
@@ -430,8 +446,9 @@
    :ryanpeikou      {:fun ryanpeikou? :han 3}
    :chinitsu        {:fun chinitsu? :han 6}
    :kokushi-musou   {:fun kokushi-musou? :han :yakuman}
-   :kokushi-tanki   {:fun kokushi-tanki? :han :yakuman}
+   :kokushi-juusan  {:fun kokushi-musou-juusan-menmachi? :han :yakuman}
    :suuankou        {:fun suuankou? :han :yakuman}
+   :suuankou-tanki  {:fun suuankou-tanki? :han :yakuman}
    :daisangen       {:fun daisangen? :han :yakuman}
    :shousuushii     {:fun shousuushii? :han :yakuman}
    :daisuushii      {:fun daisuushii? :han :yakuman}
@@ -469,14 +486,18 @@
   (let [n-yakuhai (count-yakuhai hand)
         n-redfive (count-redfive hand)
         n-dora (count-doras hand)
-        yaku-map (if (closed?  hand) closed-yaku-han opened-yaku-han)]
-    (cond-> (reduce-kv #(if ((:fun %3) hand) (assoc %1 %2 (:han %3)) %1) {} yaku-map)
+        yaku-han (if (closed? hand) closed-yaku-han opened-yaku-han)
+        yakus (reduce-kv
+               (fn [m k {:keys [fun han]}]
+                 (cond-> m
+                   (fun hand) (assoc k han))) {} yaku-han)]
+    (cond-> yakus
       (> n-yakuhai 0) (assoc :yakuhai n-yakuhai)
-      (> n-redfive 0) (assoc :redfive n-redfive)
+      (> n-redfive 0) (assoc :akadora n-redfive)
       (> n-dora 0) (assoc :dora n-dora))))
 
 (defn no-yaku? [yakus]
-  (empty? (dissoc yakus :dora :redfive)))
+  (empty? (dissoc yakus :dora :akadora)))
 
 (defn hans [yakus]
   (let [yakuman-count (count (filter #{:yakuman} (vals yakus)))]
@@ -703,7 +724,19 @@
   (println (map f x))
   x)
 
-(defn ukeire
+(defn kokushi-ukeire [hand]
+  (->> tile/kokushi-tiles
+       (filter (partial can-add-tile? hand))  ;; that can be added to the hand
+       (debug->> identity)
+       (map #(hash-map :tile % :hand (hand-with-tile hand %)))  ;; build a hand with tile
+       (debug->> #(shanten (:hand %)))
+       (filter #(= (shanten (:hand %)) -1))  ;; check it's shanten
+       (debug->> :tile)
+       (filter #(valid? (:hand %)))  ;; check if it's a valid hand
+       (map :tile)  ;; get back the added tiles
+       (set)))
+
+(defn regular-ukeire
   "Brute force ukeire: build a new hand with a tile added and recompute it's shanten.
    If the shanten is -1 that tile is a winning one.
    The hand must lack only 1 tile."
@@ -729,6 +762,20 @@
            (filter #(valid? (:hand %)))  ;; check if it's a valid hand
            (map :tile)  ;; get back the added tiles
            (set)))))  ;; put them in a set
+
+(defn shape [hand]
+  (if (closed? hand)
+    (let [rs (regular-shanten (split-tiles-groups (full hand)))
+          cs (chiitoitsu-shanten (split-tiles-groups (:an hand)))
+          ks (kokushi-shanten (split-tiles-groups (:an hand)))]
+      (first (min-key second [:regular rs] [:chiitoitsu cs] [:kokushi ks])))
+    :regular))
+
+(defn ukeire [hand]
+  (case (shape hand)
+    :regular (regular-ukeire hand)
+    :chiitoitsu (regular-ukeire hand)
+    :kokushi (kokushi-ukeire hand)))
 
 (defn string-of-score [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]}]
   (cond
