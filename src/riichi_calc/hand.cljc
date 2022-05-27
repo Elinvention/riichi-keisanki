@@ -504,20 +504,6 @@
    :suukantsu       {:fun suukantsu? :han :yakuman}
    :chinroutou      {:fun chinroutou? :han :yakuman}})
 
-(defn list-yakus [hand]
-  (let [n-yakuhai (count-yakuhai hand)
-        n-redfive (count-redfive hand)
-        n-dora (count-doras hand)
-        yaku-han (if (closed? hand) closed-yaku-han opened-yaku-han)
-        yakus (reduce-kv
-               (fn [m k {:keys [fun han]}]
-                 (cond-> m
-                   (fun hand) (assoc k han))) {} yaku-han)]
-    (cond-> yakus
-      (> n-yakuhai 0) (assoc :yakuhai n-yakuhai)
-      (> n-redfive 0) (assoc :akadora n-redfive)
-      (> n-dora 0) (assoc :dora n-dora))))
-
 (defn no-yaku? [yakus]
   (empty? (dissoc yakus :dora :akadora)))
 
@@ -526,6 +512,20 @@
     (if (> yakuman-count 0)
       {:yakuman yakuman-count}
       {:regular (apply + (vals yakus))})))
+
+(defn list-yakus [hand]
+  (let [yaku-han (if (closed? hand) closed-yaku-han opened-yaku-han)]
+    (as-> {:yakuhai (count-yakuhai hand)
+           :akadora (count-redfive hand)
+           :dora (count-doras hand)} yakus
+      (reduce-kv
+       (fn [m k {:keys [fun han]}]
+         (cond-> m
+           (fun hand) (assoc k han))) yakus yaku-han)
+      (if (> (get (hans yakus) :regular 0) 13)
+        (assoc yakus :kazoe-yakuman :yakuman)
+        yakus)
+      (into {} (remove (comp (some-fn nil? zero?) second) yakus)))))
 
 (defn round-up-to [to number]
   (* to (inc (quot (dec number) to))))
