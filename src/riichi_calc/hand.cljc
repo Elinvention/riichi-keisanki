@@ -7,13 +7,13 @@
 
 (defn hand
   [& {:keys [an min agari agaripai bakaze jikaze dorahyouji extra-yaku]
-               :or {an [], min [], agari :tsumo, bakaze :east, jikaze :east
-                    dorahyouji [] extra-yaku #{}}}]
+      :or {an [], min [], agari :tsumo, bakaze :east, jikaze :east
+           dorahyouji [] extra-yaku #{}}}]
   {:an (tile/sort-tiles an)   ;; from 暗 concealed tiles
    :min (tile/sort-tiles min) ;; from 明 open tiles
    :agari agari               ;; from 和了り can be :ron or :tsumo
    :agaripai agaripai         ;; from 和了り牌
-   :bakaze bakaze             ;; from 場風 
+   :bakaze bakaze             ;; from 場風
    :jikaze jikaze             ;; from 自風
    :dorahyouji dorahyouji     ;; from ドラ表示
    :extra-yaku extra-yaku})
@@ -221,7 +221,6 @@
    wait is composed of 13 tiles."
   [{:keys [an min] :as hand}]
   (let [exp-an (expand-groups an)]
-    (println "machi" (juusan-menmachi? hand))
     (and (empty? min) (= (count exp-an) 14) (juusan-menmachi? hand)
          (every? #(some #{%} exp-an) tile/kokushi-tiles)
          (some (every-pred group/couple? group/not-simple?) an))))
@@ -516,7 +515,7 @@
     25
     (round-up-to
      10
-     (cond-> (apply + (concat 
+     (cond-> (apply + (concat
                        (map (partial group/fu false) an)
                        (map (partial group/fu true) min) [20]))
        (= agari :tsumo) (+ 2)
@@ -598,7 +597,7 @@
     :gold (if (= rounds :east)
             (mapv + scores [40 20 0 0])
             (mapv + scores [80 40 0 0]))
-    :jade (if (= rounds :east) 
+    :jade (if (= rounds :east)
             (mapv + scores [55 30 0 0])
             (mapv + scores [110 55 0 0]))
     :throne (if (= rounds :east)
@@ -616,36 +615,6 @@
     r))
 
 (def tiles-sub (comp tile/sort-tiles seq-sub))
-
-(defn possible-couples [tiles]
-  (let [numerals (filter tile/numeral? tiles)
-        honors (remove tile/numeral? tiles)
-        honor-candidates (map key (filter #(= 2 (val %)) (frequencies honors)))
-        sum (apply + 0 (map :value numerals))
-        possible_values (case (mod sum 3)
-                0 #{3 6 9}
-                1 #{2 5 8}
-                2 #{1 4 7})
-        numeral-candidates (filter #(contains? possible_values (:value %)) numerals)]
-    (set (concat honor-candidates numeral-candidates))))
-
-(comment
-  (possible-couples (mapv tile/man [1 1 1 2 2 2 3 3 3 4 4 4 5 5]))
-  (possible-couples (mapv tile/man [1 1 1 2 2 2 3 3 3 4 4 4 6 6]))
-  (possible-couples (mapv tile/man [1 1 1 2 2 2 3 3 3 4 4 4 7 7]))
-  (possible-couples (tile/tiles :dragon [:red :red :red :green :green]))
-  (possible-couples [])
-  )
-
-(defn group-test1 [tiles]
-  (for [candidate (possible-couples tiles)
-        :let [head (take 2 (filter #(tile/same? % candidate) tiles))]]
-    [(group/group head)
-     (tiles-sub tiles head)]))
-
-(comment
-  (group-test1 (tile/tiles :man [1 1 1 2 2 2 5 5]))
-  )
 
 (defn group-consecutive [n {:keys [visited not-visited]}]
   (let [taken (take n not-visited)]
