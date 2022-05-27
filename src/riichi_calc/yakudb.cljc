@@ -1,7 +1,17 @@
 (ns riichi-calc.yakudb)
 
 (def yakudb
-  {:menzen-tsumo {:wiki "https://riichi.wiki/Menzenchin_tsumohou"
+  {:yakuhai {:wiki "https://riichi.wiki/Yakuhai"
+             :name {:ja "役牌"
+                    :romaji "Yakuhai"
+                    :it "Valori"
+                    :en "Value tiles"}}
+   :dora {:wiki "https://riichi.wiki/Dora"
+          :name {:ja "ドラ"
+                 :romaji "Dora"
+                 :it "Dora"
+                 :en "Dora"}}
+   :menzen-tsumo {:wiki "https://riichi.wiki/Menzenchin_tsumohou"
                   :name {:ja "門前清自摸和"
                          :romaji "menzenchin tsumohou"
                          :it "Pescata coperta"
@@ -131,11 +141,21 @@
                           :romaji "Kokushi musou"
                           :it "Tredici orfani"
                           :en " Thirteen orphans"}}
+   :kokushi-musou-juusan-menmachi {:wiki "https://riichi.wiki/Kokushi_Musou"
+                                   :name {:ja "国士無双１３面待ち"
+                                          :romaji "Kokushi musou juusan menmachi"
+                                          :it "Tredici orfani con 13 attese"
+                                          :en " Thirteen orphans with 13-way wait"}}
    :suuankou {:wiki "https://riichi.wiki/Suuankou"
               :name {:ja "四暗刻"
                      :romaji "Suuankou"
                      :it "Quattro tris nascosti"
                      :en "Four concealed triplets"}}
+   :suuankou-tanki {:wiki "https://riichi.wiki/Suuankou"
+                    :name {:ja "四暗刻単騎"
+                           :romaji "Suuankou tanki"
+                           :it "Quattro tris nascosti con attesa singola"
+                           :en "Four concealed triplets with pair wait"}}
    :daisangen {:wiki "https://riichi.wiki/Daisangen"
                :name {:ja "大三元"
                       :romaji "Daisangen"
