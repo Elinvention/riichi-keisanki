@@ -252,8 +252,7 @@
   "All tile groups contain at least 1 terminal or honor."
   [hand]
   (and (every? group/not-simple-edge? (full hand))
-       (some group/terminal? (full hand))
-       (some group/edge? (full hand))
+       (some group/terminal-edge? (full hand))
        (some group/honor? (full hand))))
 
 (defn honroutou?
