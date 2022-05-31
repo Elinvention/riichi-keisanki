@@ -42,8 +42,7 @@
       (swap! *state assoc :keyboard-mode :agaripai))))
 
 (defn remove-from-hand [path index]
-  (swap! *state update-in [:hand path]
-         #(into (subvec % 0 index) (subvec % (inc index)))))
+  (swap! *state update :hand hand/remove-from-hand path index))
 
 (defn advance-wind [wind]
   (swap! *state update-in [:hand wind] tile/wind-next))

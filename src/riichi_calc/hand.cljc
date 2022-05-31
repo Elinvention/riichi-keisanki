@@ -826,3 +826,8 @@
                                    "\nPoints: " (string-of-han han fu)
                                    "\nScore: " (string-of-score score))
                      :yakus yakus :han han :fu fu :score score :agari (:agari gh)})))))))
+
+(defn remove-from-hand [{:keys [agaripai] :as hand} path index]
+  (cond-> (update hand path #(into (subvec % 0 index) (subvec % (inc index))))
+    (and (= (get-in hand [path index]) agaripai)
+         (= (count (filter (partial = agaripai) (expand hand))) 1)) (assoc :agaripai nil)))

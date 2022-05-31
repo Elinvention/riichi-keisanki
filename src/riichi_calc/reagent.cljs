@@ -47,8 +47,7 @@
      [back-tile theme])])
 
 (defn remove-from-hand [path index]
-  (swap! *state update-in [:hand path]
-         #(into (subvec % 0 index) (subvec % (inc index)))))
+  (swap! *state update :hand hand/remove-from-hand path index))
 
 (defn play-tile-down-sfx []
   (let [domaudio (js/document.getElementById "klick4")]
