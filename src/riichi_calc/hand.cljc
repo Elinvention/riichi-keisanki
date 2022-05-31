@@ -525,7 +525,10 @@
       (if (> (get (hans yakus) :regular 0) 13)
         (assoc yakus :kazoe-yakuman :yakuman)
         yakus)
-      (into {} (remove (comp (some-fn nil? zero?) second) yakus)))))
+      (into {} (remove (comp (some-fn nil? zero?) second) yakus))
+      (if (some #(= :yakuman (val %)) yakus)
+        (into {} (filter #(= :yakuman (val %)) yakus))
+        yakus))))
 
 (defn round-up-to [to number]
   (* to (inc (quot (dec number) to))))
