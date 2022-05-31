@@ -1,21 +1,15 @@
 (ns riichi-calc.reagent
   (:require [clojure.string :refer [capitalize]]
-            [clojure.core.match :refer [match]]
             [reagent.core :as r]
             [reagent.dom :as rdom]
-            [riichi-calc.tile :as tile]
             [riichi-calc.group :as group]
             [riichi-calc.hand :as hand]
+            [riichi-calc.state :as state]
+            [riichi-calc.tile :as tile]
             [riichi-calc.yakudb :refer [yakudb]]))
 
 
-(def initial-state {:hand (hand/hand)
-                    :keyboard-mode :an
-                    :akadora false
-                    :theme :regular
-                    :language :romaji})
-
-(def *state (r/atom initial-state))
+(def *state (r/atom state/initial-state))
 
 (defn url-from-name [theme tname]
   (str "resources/tiles/" (capitalize (name theme)) "/" tname ".svg"))
@@ -53,55 +47,14 @@
   (let [domaudio (js/document.getElementById "klick4")]
     (set! (.-currentTime domaudio) 0)
     (-> (.play domaudio)
-        (.catch #(println "Can't play sound:" %)))))
+        (.catch #(println "Can't play sound:" (. % -message))))))
 
-(defn update-in-hand [path f tile]
-  (play-tile-down-sfx)
-  (swap! *state update-in [:hand path] f tile))
-
-(defn add-agaripai [tile]
-  (update-in-hand :an tile/conj-sort-tile tile)
-  (swap! *state assoc-in [:hand :agaripai] tile))
-
-(defn keyboard-input [tile]
-  (let [{:keys [hand keyboard-mode akadora]} @*state]
-    (case keyboard-mode
-      :an (when (hand/can-add-tile? hand tile)
-            (update-in-hand :an tile/conj-sort-tile tile))
-      :chii (if akadora
-              (when (hand/can-add-red-chii? hand tile)
-                (when-let [red-straight (group/red-straight tile)]
-                  (update-in-hand :min conj red-straight)))
-              (when (hand/can-add-chii? hand tile)
-                (when-let [straight (group/straight tile)]
-                  (update-in-hand :min conj straight))))
-      :pon (when (hand/can-add-pon? hand tile)
-             (update-in-hand :min conj (group/tris tile)))
-      :kan (when (hand/can-add-kan? hand tile)
-             (update-in-hand :min conj (group/quad tile)))
-      :ankan (when (hand/can-add-kan? hand tile)
-               (update-in-hand :an conj (group/quad tile)))
-      :dorahyouji (when (hand/can-add-dorahyouji? hand tile)
-                    (update-in-hand :dorahyouji conj tile))
-      :agaripai (if (> (hand/space-left hand) 0)
-                  (when (hand/can-add-tile? hand tile)
-                    (add-agaripai tile))
-                  (when (some #{tile} (hand/expand hand))
-                    (swap! *state assoc-in [:hand :agaripai] tile))))
-    (let [space (hand/space-left (:hand @*state))
-          agaripai (:agaripai hand)
-          next-kmode (match [space agaripai keyboard-mode]
-                       [1 nil _] :agaripai
-                       [0 nil _] :agaripai
-                       [(_ :guard #(< % 3)) _ (:or :chii :pon :kan :ankan)] :an
-                       :else keyboard-mode)]
-      (when (not= next-kmode keyboard-mode)
-        (swap! *state assoc :keyboard-mode next-kmode)))))
+(def update-hand-with-sfx (partial state/update-hand-with-sfx play-tile-down-sfx))
 
 (defn keyboard-key [layout tile enabled]
   (let [plain-tile (svg-tile layout tile false)]
     (if enabled
-      (assoc-in plain-tile [1 :on-click] #(keyboard-input tile))
+      (assoc-in plain-tile [1 :on-click] #(swap! *state state/keyboard-input tile update-hand-with-sfx))
       (update-in plain-tile [1 :style] assoc :opacity "50%"))))
 
 (defn radio-group [options value on-change]
@@ -120,7 +73,7 @@
 (defn checkboxes [boxes on-change]
   [:<>
    (for [box boxes
-         :let [bname (name (key box))
+         :let [bname (get (val box) :name)
                id (str bname "-checkbox")
                checked (get (val box) :checked)
                disabled (get (val box) :disabled)
@@ -136,22 +89,6 @@
                :on-change closure}]
       [:label {:for id} (capitalize bname)]])])
 
-(defn can-input? [{:keys [keyboard-mode hand akadora]} tile ukeire]
-  (case keyboard-mode
-    :an (hand/can-add-tile? hand tile)
-    :chii (if akadora
-            (hand/can-add-red-chii? hand tile)
-            (hand/can-add-chii? hand tile))
-    :pon (hand/can-add-pon? hand tile)
-    :kan (hand/can-add-kan? hand tile)
-    :ankan (hand/can-add-kan? hand tile)
-    :dorahyouji (hand/can-add-dorahyouji? hand tile)
-    :agaripai (if (> (hand/space-left hand) 0)
-                (if (not-empty ukeire)
-                  (contains? ukeire tile)
-                  (hand/can-add-tile? hand tile))
-                (some #{tile} (hand/expand-groups (:an hand))))))
-
 (defn settings-render []
   [:<>
    [:fieldset [:legend "Theme"]
@@ -164,7 +101,7 @@
    (radio-group [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
                 (:keyboard-mode @*state)
                 #(swap! *state assoc :keyboard-mode %1))
-   (checkboxes {:akadora {:checked (:akadora @*state)}} #(swap! *state update %1 not))])
+   (checkboxes {:akadora {:name "Akadora" :checked (:akadora @*state)}} #(swap! *state update %1 not))])
 
 (defn agari-widget [agari]
   [:fieldset [:legend "Agari:"]
@@ -172,27 +109,27 @@
                 agari
                 #(swap! *state assoc-in [:hand :agari] %1))])
 
-(defn extra-yaku->checkboxes [extra-yaku]
+(defn extra-yaku->checkboxes [extra-yaku lang]
   (let [yakus [:riichi :ippatsu :chankan :rinshan-kaihou :haitei-raoyue :houtei-raoyui]
         checked? #(contains? extra-yaku %)
         disabled? #(and (= % :ippatsu) (not (contains? extra-yaku :riichi)))]
-    (zipmap yakus (map #(hash-map :checked (checked? %) :disabled (disabled? %)) yakus))))
+    (zipmap yakus (map #(hash-map :name (get-in yakudb [% :name lang]) :checked (checked? %) :disabled (disabled? %)) yakus))))
 
-(defn extra-yaku-widget [extra-yaku]
+(defn extra-yaku-widget [extra-yaku lang]
   [:fieldset [:legend "Extra yakus:"]
-   [checkboxes (extra-yaku->checkboxes extra-yaku)
+   [checkboxes (extra-yaku->checkboxes extra-yaku lang)
     (fn [yaku checked]
       (swap! *state update :hand #(if checked
                                     (hand/add-yaku %1 yaku)
                                     (hand/remove-yaku %1 yaku))))]])
 
 (defn keyboard-render []
-  (let [{:keys [hand theme akadora] :as state} @*state
+  (let [{:keys [keyboard-mode akadora hand theme]} @*state
         ukeire (hand/ukeire hand)
         key-tiles (for [t tile/all-34-tiles
                         :let [akat (if (and akadora (= 5 (:value t)))
                                      (assoc t :red true) t)
-                              enabled (can-input? state akat ukeire)]]
+                              enabled (state/can-input? keyboard-mode akadora hand akat ukeire)]]
                     ^{:key (str (url theme akat) enabled)}
                     [keyboard-key theme akat enabled])]
       [:<>
@@ -256,15 +193,15 @@
     [:<> (concat (hand-an-render hand) (hand-min-render hand))]))
 
 (defn hand-properties-render []
-  (let [{:keys [hand theme]} @*state]
+  (let [{:keys [hand theme language]} @*state]
     [:<>
      (wind-button (tile/wind (:bakaze hand)) :bakaze theme)
      (wind-button (tile/wind (:jikaze hand)) :jikaze theme)
      (agaripai-view (:agaripai hand))
      (dorahyouji-widget hand)
      [agari-widget (:agari hand)]
-     [extra-yaku-widget (:extra-yaku hand)]
-     [:button {:on-click #(reset! *state initial-state)} "Reset"]]))
+     [extra-yaku-widget (:extra-yaku hand) language]
+     [:button {:on-click #(reset! *state state/initial-state)} "Reset"]]))
 
 (defn result-win [lang {:keys [yakus han fu score]}]
   [:table [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
@@ -278,7 +215,8 @@
     [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]])
 
 (defn ukeire-tile [theme tile]
-  [assoc-in (svg-tile theme tile false) [1 :on-click] #(add-agaripai tile)])
+  [assoc-in (svg-tile theme tile false) [1 :on-click]
+   #(swap! *state state/add-agaripai tile)])
 
 (defn result-tenpai [theme {:keys [ukeire summary]}]
   [:<>
@@ -290,7 +228,7 @@
 
 (defn results-render []
   (let [{:keys [hand theme language]} @*state
-        {:keys [summary] :as res} (hand/results hand)]
+        {:keys [summary] :as res} (hand/results hand language)]
     (case (:type res)
       (:incomplete :invalid :agaripai :no-yaku) [:p summary]
       :tenpai (result-tenpai theme res)

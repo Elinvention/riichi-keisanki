@@ -2,7 +2,8 @@
   (:require [clojure.string :as s]
             [clojure.core.match :refer [match]]
             [riichi-calc.group :as group]
-            [riichi-calc.tile :as tile]))
+            [riichi-calc.tile :as tile]
+            [riichi-calc.yakudb :refer [yakudb]]))
 
 
 (defn hand
@@ -378,7 +379,7 @@
   not be counted as such; only as the lesser toitoi with sanankou.
   Suuankou can only be obtained via tsumo. Suuankou tanki can be obtained either
   way, but must have single wait (tanki)."
-  [{:keys [an min agari] :as hand}]
+  [{:keys [an min agari]}]
   (and (empty? min)
        (= 4 (count (filter (some-fn group/tris? group/quad?) an)))
        (= agari :tsumo)))
@@ -783,22 +784,23 @@
     (every? some? [dealer-pay non-dealer-pay]) (str dealer-pay "+" non-dealer-pay "⨉2")
     (some? ron-pay) (str ron-pay)))
 
-(defn string-of-yakus [yakus]
-  (let [yakumans (filter #(= :yakuman (val %)) yakus)]
-    (s/join "\n" (map (fn [yaku]
-                        (let [yname (s/capitalize (name (key yaku)))
-                              yval (if (integer? (val yaku))
-                                     (val yaku)
-                                     (s/capitalize (name (val yaku))))]
-                          (str "★ " yname ": " yval)))
-                      (if (empty? yakumans) yakus yakumans)))))
+(defn string-of-yakus [yakus lang]
+  (let [yakumans (filter #(= :yakuman (val %)) yakus)
+        yaku-lines (map (fn [yaku]
+                          (let [yname (get-in yakudb [(key yaku) :name lang])
+                                yval (if (integer? (val yaku))
+                                       (val yaku)
+                                       (s/capitalize (name (val yaku))))]
+                            (str "★ " yname ": " yval)))
+             (if (empty? yakumans) yakus yakumans))]
+    (s/join "\n" yaku-lines)))
 
 (defn string-of-han [{:keys [yakuman regular]} fu]
   (cond
     (some? yakuman) (str (case yakuman 1 "", 2 "Double ", 3 "Triple ") "Yakuman")
     (some? regular) (str regular " han " fu " fu")))
 
-(defn results [hand]
+(defn results [hand lang]
   (if (> (space-left hand) 1)
     {:type :incomplete
      :summary "Please enter at least 13 tiles"}
@@ -822,7 +824,7 @@
                         fu (minipoints gh)
                         score (score gh han fu)]
                     {:type :winning
-                     :summary (str "Winning hand!\nYakus:\n" (string-of-yakus yakus)
+                     :summary (str "Winning hand!\nYakus:\n" (string-of-yakus yakus lang)
                                    "\nPoints: " (string-of-han han fu)
                                    "\nScore: " (string-of-score score))
                      :yakus yakus :han han :fu fu :score score :agari (:agari gh)})))))))

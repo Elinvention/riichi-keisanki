@@ -1,45 +1,13 @@
 (ns riichi-calc.fx
   (:gen-class)
-  (:require [clojure.string :refer [capitalize]]
-            [cljfx.api :as fx]
-            [riichi-calc.tile :as tile]
+  (:require [cljfx.api :as fx]
+            [clojure.string :refer [capitalize]]
             [riichi-calc.group :as group]
-            [riichi-calc.hand :as hand]))
+            [riichi-calc.hand :as hand]
+            [riichi-calc.state :as state]
+            [riichi-calc.tile :as tile]))
 
-(def initial-state {:hand (hand/hand)
-                    :keyboard-mode :an
-                    :akadora false
-                    :theme :regular
-                    :results (hand/results (hand/hand))})
-
-(def *state (atom initial-state))
-
-(defn keyboard-input [tile]
-  (let [{:keys [hand keyboard-mode akadora]} @*state]
-    (case keyboard-mode
-      :an (when (hand/can-add-tile? hand tile)
-            (swap! *state update-in [:hand :an] tile/conj-sort-tile tile))
-      :chii (if akadora
-              (when (hand/can-add-red-chii? hand tile)
-                (swap! *state update-in [:hand :min] conj (group/red-straight tile)))
-              (when (hand/can-add-chii? hand tile)
-                (swap! *state update-in [:hand :min] conj (group/straight tile))))
-      :pon (when (hand/can-add-pon? hand tile)
-             (swap! *state update-in [:hand :min] conj (group/tris tile)))
-      :kan (when (hand/can-add-kan? hand tile)
-             (swap! *state update-in [:hand :min] conj (group/quad tile)))
-      :ankan (when (hand/can-add-kan? hand tile)
-               (swap! *state update-in [:hand :an] conj (group/quad tile)))
-      :dorahyouji (when (hand/can-add-dorahyouji? hand tile)
-                    (swap! *state update-in [:hand :dorahyouji] conj tile))
-      :agaripai (if (> (hand/space-left hand) 0)
-                  (when (hand/can-add-tile? hand tile)
-                    (swap! *state update-in [:hand :an] tile/conj-sort-tile tile)
-                    (swap! *state assoc-in [:hand :agaripai] tile))
-                  (when (some #{tile} (hand/expand hand))
-                    (swap! *state assoc-in [:hand :agaripai] tile))))
-    (when (= (hand/space-left hand) 2)
-      (swap! *state assoc :keyboard-mode :agaripai))))
+(def *state (atom state/initial-state))
 
 (defn remove-from-hand [path index]
   (swap! *state update :hand hand/remove-from-hand path index))
@@ -117,18 +85,6 @@
                       :path :dorahyouji
                       :index index}})
 
-(defn can-input? [kmode akadora hand {:keys [ukeire]} tile]
-  (case kmode
-    :an (hand/can-add-tile? hand tile)
-    :chii (if akadora (hand/can-add-red-chii? hand tile) (hand/can-add-chii? hand tile))
-    :pon (hand/can-add-pon? hand tile)
-    :kan (hand/can-add-kan? hand tile)
-    :ankan (hand/can-add-kan? hand tile)
-    :dorahyouji (hand/can-add-dorahyouji? hand tile)
-    :agaripai (if (> (hand/space-left hand) 0)
-                (if ukeire (contains? ukeire tile) (hand/can-add-tile? hand tile))
-                (some #{tile} (hand/expand-groups (:an hand))))))
-
 (defn- keyboard-key-button [{:keys [tile disable theme]}]
   {:fx/type :button
    :text ""
@@ -152,7 +108,7 @@
                        :text (capitalize (name option))
                        :on-action (assoc on-action :option option)})}})
 
-(defn- keyboard [{:keys [kmode akadora hand results theme]}]
+(defn- keyboard [{:keys [kmode akadora hand theme]}]
   {:fx/type :v-box
    :spacing 5
    :children [{:fx/type radio-group
@@ -173,9 +129,10 @@
                :children (for [t tile/all-34-tiles]
                            (let [actual-t (if (and akadora (= 5 (:value t)))
                                             (assoc t :red true)
-                                            t)]
+                                            t)
+                                 ukeire (hand/ukeire hand)]
                              {:fx/type keyboard-key-button
-                              :disable (not (can-input? kmode akadora hand results actual-t))
+                              :disable (not (state/can-input? kmode akadora hand actual-t ukeire))
                               :tile actual-t
                               :theme theme}))}]})
 
@@ -281,7 +238,7 @@
               {:fx/type :button
                :text "Reset"
                :on-action {:event/type ::reset}
-               :disable (= hand (:hand initial-state))}]})
+               :disable (= hand (:hand state/initial-state))}]})
 
 (defn results-view [{:keys [results]}]
   {:fx/type :v-box
@@ -331,7 +288,7 @@ Akadora 赤ドラ red fives"}
 Ippatsu 一発 \"one-shot\" win with riichi in 1 turn
 Chankan 搶槓 win with a tile stolen from an opponent's kan"}]})
 
-(defn- root [{:keys [hand keyboard-mode akadora results theme]}]
+(defn- root [{:keys [hand keyboard-mode akadora theme language]}]
   {:fx/type :stage
    :showing true
    :title "Riichi calculator"
@@ -349,28 +306,28 @@ Chankan 搶槓 win with a tile stolen from an opponent's kan"}]})
                                         :kmode keyboard-mode
                                         :akadora akadora
                                         :hand hand
-                                        :results results
                                         :theme theme}
                                        {:fx/type results-view
-                                        :results results}
+                                        :results (hand/results hand language)}
                                        glossary]}}}})
+
+(def update-hand (partial state/update-hand-with-sfx #(println "TODO: play a sound!")))
 
 (defn map-event-handler [event]
   (case (:event/type event)
     ::set-keyboard-mode (swap! *state assoc :keyboard-mode (:option event))
-    ::keyboard-input (keyboard-input (:tile event))
+    ::keyboard-input (swap! *state state/keyboard-input (:tile event) update-hand)
     ::set-akadora (swap! *state assoc :akadora (:fx/event event))
     ::set-agari (swap! *state assoc-in [:hand :agari] (:option event))
     ::set-agaripai (swap! *state assoc-in [:hand :agaripai] (:tile event))
     ::advance-wind (advance-wind (:kind event))
     ::remove-from-hand (remove-from-hand (:path event) (:index event))
     ::set-theme (swap! *state assoc :theme (:option event))
-    ::reset (reset! *state initial-state)
+    ::reset (reset! *state state/initial-state)
     ::extra-yaku (swap! *state update :hand #(if (:fx/event event)
                                                (hand/add-yaku % (:yaku event))
                                                (hand/remove-yaku % (:yaku event))))
     (println "unknown event:" event))
-  (swap! *state assoc :results (hand/results (:hand @*state)))
   (println @*state))
 
 (def renderer
