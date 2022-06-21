@@ -4,7 +4,9 @@ A graphical user interface with tools for Riichi Mahjong.
 
 It can compute the list of yakus and scores from a given hand.
 
-## Usage
+You can try the WebApp version at https://riichi.elinvention.ovh/.
+
+## Building
 
 Currently there are 2 GUIs. The original one is made with [cljfx], written in
 Clojure and should be easy to run on your PC.
