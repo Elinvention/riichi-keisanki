@@ -744,7 +744,7 @@
   (loop [{:keys [groups] :as tg} (split-tiles-groups (:an (grouped hand)))]
     (let [{new-tiles :tiles new-groups :groups} (split-ukeire-candidates tg)]
       (if (= (count new-groups) (count groups))
-        new-tiles
+        (set new-tiles)
         (recur {:tiles new-tiles :groups new-groups})))))
 
 (defn regular-ukeire
