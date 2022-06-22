@@ -514,6 +514,8 @@
       {:yakuman yakuman-count}
       {:regular (apply + (vals yakus))})))
 
+(def zero-number? (every-pred number? zero?))
+
 (defn list-yakus [hand]
   (let [yaku-han (if (closed? hand) closed-yaku-han opened-yaku-han)]
     (as-> {:yakuhai (count-yakuhai hand)
@@ -526,7 +528,7 @@
       (if (> (get (hans yakus) :regular 0) 13)
         (assoc yakus :kazoe-yakuman :yakuman)
         yakus)
-      (into {} (remove (comp (some-fn nil? zero?) second) yakus))
+      (into {} (remove (comp (some-fn nil? zero-number?) second) yakus))
       (if (some #(= :yakuman (val %)) yakus)
         (into {} (filter #(= :yakuman (val %)) yakus))
         yakus))))
