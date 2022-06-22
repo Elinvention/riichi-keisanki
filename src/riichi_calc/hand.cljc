@@ -665,33 +665,65 @@
     {:visited (conj visited (first not-visited))
      :not-visited (vec (rest not-visited))}))
 
-(defn group-greedy [{:keys [visited not-visited] :as decomposition}]
+(defn group-greedy
+  "Simple and greedy grouping algorithm. It's obviously not optimal, but often
+   finds an optimal grouping and almost always a pretty good approximation.
+   Takes a decomposition and returns a new one with greedly grouped tiles."
+  [{:keys [not-visited] :as decomposition}]
   (if (empty? not-visited)
-    visited
+    decomposition
     (recur (or (group-consecutive 4 decomposition)
                (group-consecutive 3 decomposition)
                (group-straight decomposition)
                (group-consecutive 2 decomposition)
                (group-skip decomposition)))))
 
-(defn ->decomposition [{:keys [tiles groups]}]
+(defn ->decomposition
+  "Renames :tiles to :not-visited and :groups to :visited."
+  [{:keys [tiles groups]}]
   {:visited groups :not-visited tiles})
 
-(def objective-fn (comp regular-shanten split-tiles-groups))
+(defn objective-fn
+  "Custom shanten formula to guide B&B"
+  [{:keys [visited]}]
+  (let [{:keys [groups] :as tg} (split-tiles-groups visited)
+        blocks (take 5 (sort-by group/group-key groups))
+        nblocks (count blocks)
+        ngroups (count (remove (some-fn group/couple? group/taatsu?) blocks))
+        npairs (count (filter group/couple? blocks))
+        ntaatsu (count (filter group/taatsu? blocks))]
+    ;; start from 16 (insted of 8), subtract: 4 points per group, 2 points per pair,
+    ;; 1 point per taatsu, taatsu instead of pair -2 points
+    (min (- 16 (* 4 ngroups) (* 2 npairs) ntaatsu (if (and (>= nblocks 5) (= 0 npairs)) -2 0))
+         (kokushi-shanten tg) (chiitoitsu-shanten tg))))
 
-(defn lower-evaluation [{:keys [visited not-visited] :as decomposition}]
-  (+ 0 (count (remove :kind visited))))
+(defn lower-evaluation
+  "Lower evaluation for B&B. The idea is to focus on skipped tiles and non optimal
+   shapes likes taatsu and pairs to provide a lower evaluation to B&B."
+  [{:keys [visited]}]
+  (let [vtiles (count (remove :kind visited))
+        ntaatsu (count (filter group/taatsu? visited))
+        npairs (count (filter group/couple? visited))]
+    (+ (* 4 (quot vtiles 3)) ;; every 3 tiles skipped => 1 group less => 4 points away
+       (* 2 (int (ceil (/ (mod vtiles 3) 2)))) ;; additional skipped tiles coud have formed a pair => 2 points away
+       (min (quot npairs 2) (- 6 npairs)) ;; too many pairs is bad, unless chiitoitsu
+       ntaatsu))) ;; taatsu are bad, but better than nothing...
 
-(defn group-branch-n-bound [decomposition]
+(defn group-branch-n-bound
+  "A branch and bound algorithm to group tiles of all kinds of hands: 14 tiles
+   or less, valid and invalid.
+   Takes in a decomposition that is a map {:visited [] :not-visited []} and
+   returns the visited and grouped tiles."
+  [decomposition]
   ;;(println "group-branch-n-bound" (:not-visited decomposition))
   (loop [best (group-greedy decomposition)
          bound (objective-fn best)
          queue [decomposition]
          steps 0]
-    (if (or (empty? queue) (= -1 bound))
-      (do (println "BnB found solution in" steps "steps") best)
+    (if (or (empty? queue) (< bound 0))
+      (do (println "BnB found solution in" steps "steps") (:visited best))
       (let [decomp (peek queue)
-            decomp-upper (objective-fn (:visited decomp))
+            decomp-upper (objective-fn decomp)
             branches [(group-consecutive 4 decomp)
                       (group-consecutive 3 decomp)
                       (group-straight decomp)
@@ -702,7 +734,7 @@
                      (remove #(> (lower-evaluation %) bound)))]
         ;;(println steps decomp-upper bound (count cut))
         (if (< decomp-upper bound)
-          (recur (:visited decomp) decomp-upper (apply conj (pop queue) cut) (inc steps))
+          (recur decomp decomp-upper (apply conj (pop queue) cut) (inc steps))
           (recur best bound (apply conj (pop queue) cut) (inc steps)))))))
 
 (defn grouped [hand]
