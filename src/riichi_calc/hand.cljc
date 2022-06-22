@@ -321,7 +321,7 @@
   "This hand has a complete sequence of 1 through 9 of a single suit."
   [hand]
   (let [straights (distinct (filter group/straight? (full hand)))
-        dominant-seed (first (keys (max-key val (frequencies (map :seed straights)))))
+        dominant-seed (key (apply max-key val (into {nil 0} (frequencies (map :seed straights)))))
         candidate (filter (every-pred
                            #(contains? #{1 4 7} (:value %))
                            #(= dominant-seed (:seed %))) straights)
