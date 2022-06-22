@@ -1,5 +1,6 @@
 (ns riichi-calc.hand
   (:require [clojure.string :as s]
+            [clojure.math :refer [ceil round]]
             [clojure.core.match :refer [match]]
             [riichi-calc.group :as group]
             [riichi-calc.tile :as tile]
@@ -534,7 +535,7 @@
   (* to (inc (quot (dec number) to))))
 
 (defn round-nearest [near number]
-  (* near (Math/round (double (/ number near)))))
+  (* near (round (/ number near))))
 
 (defn minipoints [{:keys [an min agari bakaze jikaze] :as hand}]
   (if (chiitoitsu? hand)
@@ -593,7 +594,7 @@
     [_     :tsumo] (non-dealer-tsumo han fu)))
 
 (defn round-thousandth [score]
-  (-> score (/ 1000) double Math/ceil int))
+  (-> score (/ 1000) ceil int))
 
 (defn adjusted-final-scores [final-scores]
   (let [correction (apply + final-scores)

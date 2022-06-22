@@ -1,4 +1,5 @@
-(ns riichi-calc.tile)
+(ns riichi-calc.tile
+  (:require [clojure.core :refer [abs]]))
 
 
 (defrecord Tile [seed value red])
@@ -132,13 +133,14 @@
   (and (= 2 (count tiles))
        (apply = (map :seed tiles))
        (every? numeral? tiles)
-       (< 0 (Math/abs (- (:value tile1) (:value tile2))) 3)))
+       (< 0 (abs (- (:value tile1) (:value tile2))) 3)))
 
 (defn distance
   [tile1 tile2]
   (cond
     (same? tile1 tile2) 0
-    (and (numeral? tile1) (numeral? tile2) (= (:seed tile1) (:seed tile2))) (Math/abs (- (:value tile1) (:value tile2)))
+    (and (numeral? tile1) (numeral? tile2) (= (:seed tile1) (:seed tile2)))
+    (abs (- (:value tile1) (:value tile2)))
     :else 100))
 
 (defn min-distance
@@ -151,7 +153,7 @@
   (cond
     (some (partial same? tile) tiles) 0
     (numeral? tile) (if-let [numerals (not-empty (filter #(and (= (:seed %) (:seed tile)) (numeral? %)) tiles))]
-                      (apply min (map #(Math/abs (- (:value %) (:value tile))) numerals))
+                      (apply min (map #(abs (- (:value %) (:value tile))) numerals))
                       10)
     :else 10))
 
