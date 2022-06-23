@@ -1,8 +1,7 @@
 (ns riichi-calc.hand
-  (:require [clojure.core :refer [format]]
-            [clojure.core.match :refer [match]]
+  (:require [clojure.string :as s]
             [clojure.math :refer [ceil round]]
-            [clojure.string :as s]
+            [clojure.core.match :refer [match]]
             [riichi-calc.group :as group]
             [riichi-calc.tile :as tile]
             [riichi-calc.yakudb :refer [yakudb]]))
@@ -815,12 +814,9 @@
 
 (defn string-of-score [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]}]
   (cond
-    (some? everyone-pay)
-    (format "Everyone pays %d points to winner" everyone-pay)
-    (every? some? [dealer-pay non-dealer-pay])
-    (format "Dealer pays %d points, others %d points to winner" dealer-pay non-dealer-pay)
-    (some? ron-pay)
-    (format "Looser pays %d points to winner" ron-pay)))
+    (some? everyone-pay) (str everyone-pay "⨉3")
+    (every? some? [dealer-pay non-dealer-pay]) (str dealer-pay "+" non-dealer-pay "⨉2")
+    (some? ron-pay) (str ron-pay)))
 
 (defn string-of-yakus [yakus lang]
   (let [yakumans (filter #(= :yakuman (val %)) yakus)
@@ -830,7 +826,7 @@
                                        (val yaku)
                                        (s/capitalize (name (val yaku))))]
                             (str "★ " yname ": " yval)))
-                        (if (empty? yakumans) yakus yakumans))]
+             (if (empty? yakumans) yakus yakumans))]
     (s/join "\n" yaku-lines)))
 
 (defn string-of-han [{:keys [yakuman regular]} fu]
