@@ -110,8 +110,8 @@
 (defn value? [wind-turn wind-seat group]
   (tile/value? (first (expand group)) wind-turn wind-seat))
 
-(defn redfive? [{:keys [value red]}]
-  (and (= value 5) red))
+(defn redfive? [{:keys [red] :as group}]
+  (and red (contains? (set (map :value (expand group))) 5)))
 
 (defn size [{:keys [kind]}]
   (case kind
