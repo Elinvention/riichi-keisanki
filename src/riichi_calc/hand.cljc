@@ -178,7 +178,10 @@
        (or (not red) (= 0 (tile/count-exact tile dorahyouji)))))
 
 (defn machi
-  "From 待ち, wait. Returns one of:
+  "From 待ち, wait. Returns a set of possible wait patterns. There can be more
+   than one possible waits (e.g. when 2 straights overlap and agaripai is in the
+   middle).
+   Possible wait patterns:
    - :tanki (pair wait)
    - :shanpon (dual pon wait)
    - :penchan (edge wait)
@@ -188,16 +191,17 @@
   [{:keys [agaripai] :as hand}]
   {:pre [(some? hand) (some? (:an hand))]}
   (let [groups (groups-only (full hand))]
-    (when-let [agari-group (some #(when (group/in? agaripai %) %) groups)]
-      (match [(:kind agari-group) (group/expand agari-group) (:value agaripai)]
-        [:couple _ _] :tanki
-        [:tris _ _] :shanpon
-        [:straight [agaripai _ _] 7] :penchan
-        [:straight [agaripai _ _] 7] :penchan
-        [:straight [agaripai _ _] _] :ryanmen
-        [:straight [_ agaripai _] _] :kanchan
-        [:straight [_ _ agaripai] 3] :penchan
-        [:straight [_ _ agaripai] _] :ryanmen))))
+    (when-let [agari-groups (not-empty (filter (partial group/in? agaripai) groups))]
+      (set (for [g agari-groups]
+             (match [(:kind g) (group/expand g) (:value agaripai)]
+               [:couple _ _] :tanki
+               [:tris _ _] :shanpon
+               [:straight [agaripai _ _] 7] :penchan
+               [:straight [agaripai _ _] 7] :penchan
+               [:straight [agaripai _ _] _] :ryanmen
+               [:straight [_ agaripai _] _] :kanchan
+               [:straight [_ _ agaripai] 3] :penchan
+               [:straight [_ _ agaripai] _] :ryanmen))))))
 
 (defn juusan-menmachi?
   [{:keys [agaripai an]}]
@@ -313,7 +317,7 @@
   "Typically known as \"all sequences\", this is a hand that does not gain fu
    based on composition, other than that of a closed ron."
   [{:keys [an min bakaze jikaze] :as hand}]
-  (and (empty? min) (regular? hand) (= (machi hand) :ryanmen)
+  (and (empty? min) (regular? hand) (contains? (machi hand) :ryanmen)
        (not (some (partial group/value? bakaze jikaze) an))
        (= 4 (count (filter group/straight? an)))))
 
@@ -388,7 +392,7 @@
   "This hand is composed of four groups of closed triplets. It is awarded when
    the hand has a tanki wait."
   [{:keys [an min] :as hand}]
-  (and (empty? min) (= (machi hand) :tanki)
+  (and (empty? min) (contains? (machi hand) :tanki)
        (= 4 (count (filter (some-fn group/tris? group/quad?) an)))))
 
 (defn shousuushii?
@@ -551,7 +555,7 @@
        (and (= agari :ron) (closed? hand)) (+ 10)
        (some (every-pred group/couple?
                          (partial group/value? bakaze jikaze)) hand) (+ 2)
-       (contains? #{:kanchan :penchan :tanki} (machi hand)) (+ 2)))))
+       (some #{:kanchan :penchan :tanki} (machi hand)) (+ 2)))))
 
 (defn limit-hands [{:keys [yakuman regular]}]
   (case regular
