@@ -715,8 +715,8 @@
 (defn group-branch-n-bound
   "A branch and bound algorithm to group tiles of all kinds of hands: 14 tiles
    or less, valid and invalid.
-   Takes in a decomposition that is a map {:visited [] :not-visited []} and
-   returns the visited and grouped tiles."
+   Takes in a decomposition (a map {:visited [] :not-visited []}) and returns a
+   new decomposition with all tiles moved to visited and possibly grouped."
   [decomposition]
   ;;(println "group-branch-n-bound" (:not-visited decomposition))
   (loop [best (group-greedy decomposition)
@@ -724,7 +724,7 @@
          queue [decomposition]
          steps 0]
     (if (or (empty? queue) (< bound 0))
-      (do (println "BnB found solution in" steps "steps") (:visited best))
+      (do (println "BnB found solution in" steps "steps") best)
       (let [decomp (peek queue)
             decomp-upper (objective-fn decomp)
             branches [(group-consecutive 4 decomp)
@@ -747,6 +747,7 @@
        (split-tiles-groups)
        (->decomposition)
        (group-branch-n-bound)
+       (:visited)
        (assoc hand :an)))
 
 (def grouped-hand (comp grouped hand))
