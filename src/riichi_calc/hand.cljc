@@ -697,8 +697,10 @@
         ntaatsu (count (filter group/taatsu? blocks))]
     ;; start from 16 (insted of 8), subtract: 4 points per group, 2 points per pair,
     ;; 1 point per taatsu, taatsu instead of pair -2 points
-    (min (- 16 (* 4 ngroups) (* 2 npairs) ntaatsu (if (and (>= nblocks 5) (= 0 npairs)) -2 0))
-         (kokushi-shanten tg) (chiitoitsu-shanten tg))))
+    (min
+     (- 16 (* 4 ngroups) (* 2 npairs) ntaatsu (if (and (>= nblocks 5) (= 0 npairs)) -2 0))
+     (kokushi-shanten tg)
+     (if (>= npairs 4) (chiitoitsu-shanten tg) 16))))
 
 (defn lower-evaluation
   "Lower evaluation for B&B. The idea is to focus on skipped tiles and non optimal
