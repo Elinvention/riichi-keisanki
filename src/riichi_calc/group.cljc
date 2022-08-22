@@ -42,6 +42,11 @@
   "Returns a group of straight tiles with akadora if there is a 5"
   [tile]
   (group (tile/red-straight tile)))
+(defn groups [& {_couple :couple _tris :tris _quad :quad _straight :straight}]
+  (vec (concat (map couple _couple)
+               (map tris _tris)
+               (map quad _quad)
+               (map straight _straight))))
 
 (defn straight? [group]
   (= (:kind group) :straight))
