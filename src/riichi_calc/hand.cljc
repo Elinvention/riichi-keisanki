@@ -597,11 +597,12 @@
   {:ron-pay (round-up-to 100 (* 4 (basic-points han fu)))})
 
 (defn score [{:keys [jikaze agari]} han fu]
-  (match [jikaze agari]
-    [:east   :ron] (dealer-ron han fu)
-    [_       :ron] (non-dealer-ron han fu)
-    [:east :tsumo] (dealer-tsumo han fu)
-    [_     :tsumo] (non-dealer-tsumo han fu)))
+  (-> (match [jikaze agari]
+        [:east   :ron] (dealer-ron han fu)
+        [_       :ron] (non-dealer-ron han fu)
+        [:east :tsumo] (dealer-tsumo han fu)
+        [_     :tsumo] (non-dealer-tsumo han fu))
+      (assoc :jikaze jikaze :agari agari)))
 
 (defn round-thousandth [score]
   (-> score (/ 1000) ceil int))
@@ -823,11 +824,33 @@
     :chiitoitsu (regular-ukeire hand)
     :kokushi (kokushi-ukeire hand)))
 
-(defn string-of-score [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]}]
-  (cond
-    (some? everyone-pay) (str everyone-pay "⨉3")
-    (every? some? [dealer-pay non-dealer-pay]) (str dealer-pay "+" non-dealer-pay "⨉2")
-    (some? ron-pay) (str ron-pay)))
+(defn total-pay [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]
+                  :or {everyone-pay 0 dealer-pay 0 non-dealer-pay 0 ron-pay 0}}]
+  (+ (* 3 everyone-pay) dealer-pay (* 2 non-dealer-pay) ron-pay))
+
+(defn score-class [{:keys [jikaze] :as score}]
+  (match [jikaze (total-pay score)]
+    [:east 12000] :mangan
+    [:east 18000] :haneman
+    [:east 24000] :baiman
+    [:east 36000] :sanbaiman
+    [:east (_ :guard #(>= % 48000))] :yakuman
+    [_ 8000] :mangan
+    [_ 12000] :haneman
+    [_ 16000] :baiman
+    [_ 24000] :sanbaiman
+    [_ (_ :guard #(>= % 32000))] :yakuman
+    :else nil))
+
+(def capname (comp s/capitalize (fnil name "")))
+
+(defn string-of-score [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay] :as score}]
+  (let [sclass (score-class score)]
+    (cond-> (cond
+              (some? everyone-pay) (str everyone-pay "⨉3")
+              (every? some? [dealer-pay non-dealer-pay]) (str dealer-pay "+" non-dealer-pay "⨉2")
+              (some? ron-pay) (str ron-pay))
+      (some? sclass) (str " (" (capname sclass) ")"))))
 
 (defn string-of-yakus [yakus lang]
   (let [yakumans (filter #(= :yakuman (val %)) yakus)
