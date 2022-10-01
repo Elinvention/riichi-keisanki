@@ -558,13 +558,14 @@
        (some #{:kanchan :penchan :tanki} (machi hand)) (+ 2)))))
 
 (defn limit-hands [{:keys [yakuman regular]}]
-  (case regular
-    5        2000
-    (6 7)    3000
-    (8 9 10) 4000
-    (11 12)  6000
-    nil      (* yakuman 8000)
-    (when (> regular 12) 8000)))
+  (if (some? yakuman)
+    (* yakuman 8000)
+    (case regular
+      (3 4 5)  2000
+      (6 7)    3000
+      (8 9 10) 4000
+      (11 12)  6000 
+      (when (> regular 12) 8000))))
 
 (defn intpow [base exp]
   (loop [acc 1 exp exp]
@@ -572,10 +573,13 @@
         (recur (* base acc) (dec exp)))))
 
 (defn basic-points [{:keys [yakuman regular] :as han} fu]
-  (cond
-    (some? yakuman) (limit-hands han)
-    (<= 1 regular 4) (* fu (intpow 2 (+ 2 regular)))
-    (> regular 4) (limit-hands han)))
+  (if (some? yakuman) (limit-hands han)
+      (let [aotenjou (* fu (intpow 2 (+ 2 regular)))]
+        (case regular
+          (1 2) aotenjou
+          3 (if (<= fu 60) aotenjou (limit-hands han))
+          4 (if (<= fu 30) aotenjou (limit-hands han))
+          (limit-hands han)))))
 
 (defn non-dealer-tsumo [han fu]
   (let [basic (basic-points han fu)
