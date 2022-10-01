@@ -529,7 +529,7 @@
        (fn [m k {:keys [fun han]}]
          (cond-> m
            (fun hand) (assoc k han))) yakus yaku-han)
-      (if (> (get (hans yakus) :regular 0) 13)
+      (if (> (get (hans yakus) :regular 0) 12)
         (assoc yakus :kazoe-yakuman :yakuman)
         yakus)
       (into {} (remove (comp (some-fn nil? zero-number?) second) yakus))
