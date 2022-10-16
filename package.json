@@ -1,0 +1,26 @@
+{
+  "name": "riichi-keisanki",
+  "version": "1.0.0",
+  "description": "Riichi Mahjong calculator",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "gitea@code.elinvention.ovh:Elinvention/riichi-keisanki.git"
+  },
+  "author": "",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "shadow-cljs": "^2.20.2"
+  },
+  "dependencies": {
+    "bulma": "^0.9.4",
+    "bulma-o-steps": "^1.1.0",
+    "react-dom": "^17.0.2"
+  }
+}

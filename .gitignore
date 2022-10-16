@@ -16,3 +16,6 @@ pom.xml.asc
 /.lsp
 /.cpcache
 /out
+/node_modules/
+/.shadow-cljs/
+/resources/public/assets/js/

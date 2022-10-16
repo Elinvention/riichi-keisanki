@@ -1,0 +1,11 @@
+;; shadow-cljs configuration
+{:deps {:aliases [:cljs]}
+
+ :dev-http {8020 "resources/public"}
+
+ :builds {:app {:target :browser 
+                ; The directory to use for all compiler output.
+                :output-dir "resources/public/assets/js"
+                ; The relative path from web server’s root to the resources in :output-dir
+                :asset-path "/assets/js"
+                :modules {:main {:init-fn riichi-calc.reagent/run}}}}}
