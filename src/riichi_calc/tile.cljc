@@ -239,15 +239,25 @@
            (-pr-writer [tile w _]
              (write-all w (tile-name tile)))))
 
+(def wind-tiles
+  (for [seed [:wind] value [:east :south :west :north]]
+    (tile seed value)))
+
+(def dragon-tiles
+  (for [seed [:dragon] value [:white :green :red]]
+    (tile seed value)))
+
+(def literal-tiles
+  (concat wind-tiles dragon-tiles))
+
+(def honor-tiles literal-tiles) ; alias
+
+(def numeral-tiles
+  (for [seed [:man :sou :pin] value (range 1 10)]
+    (tile seed value)))
+
 (def all-34-tiles
-  (vec
-   (concat
-    (for [seed [:man :sou :pin] value (range 1 10)]
-      (tile seed value))
-    (for [seed [:wind] value [:east :south :west :north]]
-      (tile seed value))
-    (for [seed [:dragon] value [:white :green :red]]
-      (tile seed value)))))
+  (vec (concat numeral-tiles literal-tiles)))
 
 (def all-34-tiles-with-redfives
   (vec
