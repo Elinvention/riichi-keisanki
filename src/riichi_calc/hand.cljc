@@ -818,11 +818,20 @@
       (first (min-key second [:regular rs] [:chiitoitsu cs] [:kokushi ks])))
     :regular))
 
-(defn ukeire [hand]
-  (case (shape hand)
-    :regular (regular-ukeire hand)
-    :chiitoitsu (regular-ukeire hand)
-    :kokushi (kokushi-ukeire hand)))
+(def ukeire
+  (memoize
+   (fn [hand]
+     (case (shape hand)
+       :regular (regular-ukeire hand)
+       :chiitoitsu (regular-ukeire hand)
+       :kokushi (kokushi-ukeire hand)))))
+
+(defn can-agaripai? [hand tile]
+  (if (> (space-left hand) 0)
+    (if (not-empty (ukeire hand))
+      (contains? (ukeire hand) tile)
+      (can-add-tile? hand tile))
+    (some #{tile} (expand-groups (:an hand)))))
 
 (defn total-pay [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]
                   :or {everyone-pay 0 dealer-pay 0 non-dealer-pay 0 ron-pay 0}}]

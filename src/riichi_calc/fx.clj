@@ -17,7 +17,8 @@
 
 
 (defn url-from-name [theme tname]
-  (str "file:resources/tiles/Export/" (capitalize (name theme)) "/" tname ".png"))
+  (str "file:resources/public/assets/tiles/Export/" (capitalize (name theme))
+       "/" tname ".png"))
 
 (defn url [theme tile]
   (url-from-name theme (tile/tile-name tile)))
@@ -129,10 +130,9 @@
                :children (for [t tile/all-34-tiles]
                            (let [actual-t (if (and akadora (= 5 (:value t)))
                                             (assoc t :red true)
-                                            t)
-                                 ukeire (hand/ukeire hand)]
+                                            t)]
                              {:fx/type keyboard-key-button
-                              :disable (not (state/can-input? kmode akadora hand actual-t ukeire))
+                              :disable (not (state/can-input? kmode hand actual-t))
                               :tile actual-t
                               :theme theme}))}]})
 
@@ -313,10 +313,12 @@ Chankan 搶槓 win with a tile stolen from an opponent's kan"}]})
 
 (def update-hand (partial state/update-hand-with-sfx #(println "TODO: play a sound!")))
 
+(def keyboard-input (partial state/keyboard-input update-hand))
+
 (defn map-event-handler [event]
   (case (:event/type event)
     ::set-keyboard-mode (swap! *state assoc :keyboard-mode (:option event))
-    ::keyboard-input (swap! *state state/keyboard-input (:tile event) update-hand)
+    ::keyboard-input (swap! *state keyboard-input (:tile event))
     ::set-akadora (swap! *state assoc :akadora (:fx/event event))
     ::set-agari (swap! *state assoc-in [:hand :agari] (:option event))
     ::set-agaripai (swap! *state assoc-in [:hand :agaripai] (:tile event))

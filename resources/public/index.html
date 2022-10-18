@@ -21,7 +21,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: 2px;
-        min-height: 72px;
+        min-height: 64px;
       }
       #interactive {
         font-size: small;
@@ -36,8 +36,8 @@
       }
       .mahjong-tile {
         max-width: 10vw;
-        max-height: 72px;
-        width: 54px;
+        max-height: 64px;
+        width: 48px;
         user-select: none;
         transition: scale 0.1s cubic-bezier(1,0,0,1);
       }
@@ -78,12 +78,6 @@
         gap: 2px;
         margin: 20px 0;
       }
-      fieldset {
-        border-radius: 10px;
-      }
-      fieldset span {
-        display: inline-block;
-      }
       table, th, td {
         padding: 10px;
         border: 1px solid #d2caca;
@@ -110,23 +104,21 @@
   </head>
   <body>
     <main>
-    <h1>リーチ計算機 Riichi Keisanki</h1>
+    <h1 class="title is-1">リーチ計算機 Riichi Keisanki</h1>
 
-    <section id="interactive">
-      <div id="hand-properties"></div>
-      <div id="keyboard"></div>
-      <div id="keyboard-mode"></div>
-      <div id="hand"></div>
-      <div id="settings"></div>
+    <section class="hero">
+      <div id="interactive">
+        
+      </div>
     </section>
     
-    <section>
-      <h2>Results</h2>
+    <section class="section">
+      <h2 class="title is-2">Results</h2>
       <div id="results"></div>
     </section>
 
-    <section>
-      <h2>Glossary</h2>
+    <section class="section">
+      <h2 class="title is-2">Glossary</h2>
       <ul>
         <li>Bakaze 場風 turn wind</li>
         <li>Jikaze 自風 (own) seat wind</li>
