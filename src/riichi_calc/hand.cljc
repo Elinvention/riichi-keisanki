@@ -335,7 +335,7 @@
 (defn toitoi?
   "The entire hand is composed of triplets."
   [hand]
-  (= 4 (count (filter group/tris? (full hand)))))
+  (= 4 (count (filter (some-fn group/tris? group/quad?) (full hand)))))
 
 (defn sanankou?
   "The hand includes three groups of triplets (or closed quads) that have been
