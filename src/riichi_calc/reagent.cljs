@@ -90,7 +90,7 @@
                disabled (get (val box) :disabled)
                closure #(on-change (key box) (not checked))]]
      ^{:key (str bname (val box))}
-     [:label.checkbox
+     [:label.checkbox.mr-2
       [:input {:type :checkbox
                :name bname
                :value bname
@@ -101,17 +101,16 @@
 
 (defn settings-render []
   [:div#settings
-   [:fieldset [:legend "Theme"]
+   [:fieldset.field [:legend "Theme"]
     [radio-group [:regular :black] (:theme @*state) #(swap! *state assoc :theme %)]]
-   [:fieldset [:legend "Yaku Names Language"]
+   [:fieldset.field [:legend "Yaku Names Language"]
     [radio-group [:ja :romaji :it :en] (:language @*state) #(swap! *state assoc :language %)]]])
 
 (defn keyboard-mode-render []
-  [:div#keyboard-mode
-   [:fieldset [:legend "Keyboard mode:"]
+   [:fieldset#keyboard-mode.field [:legend "Keyboard mode:"]
     (radio-group [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
                  (:keyboard-mode @*state)
-                 #(swap! *state assoc :keyboard-mode %1))]])
+                 #(swap! *state assoc :keyboard-mode %1))])
 
 (defn agari-widget [agari]
   [:fieldset.field [:legend "Agari:"]
@@ -145,8 +144,7 @@
 (defn keyboard-render []
   (let [{:keys [keyboard-mode hand theme]} @*state 
         enabled? (partial state/can-input? keyboard-mode hand)]
-    [:div.keyboard
-     [keyboard-widget theme tile/all-34-tiles-with-redfives enabled? keyboard-input]]))
+    [keyboard-widget theme tile/all-34-tiles-with-redfives enabled? keyboard-input]))
 
 (defn hand-tile [tile path pos svg-tile-fn dora]
   (cond-> (svg-tile-fn (:theme @*state) tile)
@@ -204,9 +202,18 @@
   (let [{:keys [hand]} @*state]
     [:div.hand (concat (hand-an-render hand) (hand-min-render hand))]))
 
+(defn wizard-close! []
+  (swap! *state assoc-in [:wizard :open] false))
+
+(defn wizard-open! []
+  (swap! *state assoc-in [:wizard :open] true))
+
+(defn wizard-toggle! []
+  (swap! *state update-in [:wizard :open] not))
+
 (defn buttons []
   [:div.field
-   [:button.button.is-primary {:on-click #(swap! *state assoc-in [:wizard :open] true)} "Wizard"]
+   [:button.button.is-primary.mr-1 {:on-click wizard-open!} "Wizard"]
    [:button.button.is-danger {:on-click #(reset! *state state/initial-state)} "Reset"]])
 
 (defn hand-properties-render []
@@ -275,24 +282,18 @@
     [(if (:open wizard) :div#wizard.modal.is-active :div#wizard.modal)
      [:div.modal-background {:on-click #(swap! *state assoc-in [:wizard :open] false)}]
      [:div.modal-content
-      [:div.box.card
+      [:div.card
        [:div.card-header [:p.card-header-title "Wizard"]]
        [:div.card-content
-        [wizard-steps (:step wizard) @*state]
+        [wizard-steps (:step wizard) @*state]] 
+       [:div.block.has-text-centered
         (case (:step wizard)
           1 [:div [:p "Please choose jikaze"] [wizard-wind-keyboard theme :jikaze]]
           2 [:div [:p "Please choose bakaze"] [wizard-wind-keyboard theme :bakaze]]
-          3 [:div [:p "Please choose dorahyouji"]
-             [dorahyouji-keyboard theme hand]
-             [dorahyouji-widget hand]]
+          3 [:div [:p "Please choose dorahyouji"] [dorahyouji-keyboard theme hand] [dorahyouji-widget hand]]
           4 [:div [:p "Please enter closed hand"] [wizard-closed-hand-keyboard theme] [hand-render]]
           5 [:div [:p "Please enter open hand"] [wizard-open-hand-keyboard theme hand] [hand-render]]
-          6 [:div
-             [:p "Please enter agaripai"] 
-             [wizard-agaripai-keyboard theme hand]
-             [agaripai-view (:agaripai hand)]
-             [:p "Tsumo or Ron?"]
-             [agari-widget (get-in @*state [:hand :agari])]]
+          6 [:div [:p "Please enter agaripai"] [wizard-agaripai-keyboard theme hand] [agaripai-view (:agaripai hand)]]
           (swap! *state assoc-in [:wizard :step] 1))]
        [wizard-nav (:step wizard)]]]
      [:button.modal-close.is-large {:aria-label "close"
