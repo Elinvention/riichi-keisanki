@@ -251,12 +251,21 @@
 (defn wizard-step-next! []
   (swap! *state update-in [:wizard :step] (comp (partial min 6) inc)))
 
+(defn agari! [agari]
+  (swap! *state assoc-in [:hand :agari] agari))
+
+(def ron! (partial agari! :ron))
+
+(def tsumo! (partial agari! :tsumo))
+
 (defn wizard-nav [step]
   [:div.card-footer
    (when (> step 1) [:button.card-footer-item.button {:on-click wizard-step-prev!} "Previous step"])
-   [:button.card-footer-item.button.is-primary 
-    {:on-click (if (= step 6) #(swap! *state assoc-in [:wizard :open] false) wizard-step-next!)}
-    (if (= step 6) "Finish" "Next step")]])
+   (if (< step 6)
+     [:button.card-footer-item.button.is-primary {:on-click wizard-step-next!} "Next step"]
+     [:<>
+      [:button.card-footer-item.button.is-danger {:on-click (comp wizard-close! ron!)} "Ron"]
+      [:button.card-footer-item.button.is-success {:on-click (comp wizard-close! tsumo!)} "Tsumo"]])])
 
 (defn wizard-wind-keyboard [theme kaze]
   [keyboard-widget theme tile/wind-tiles (constantly true) #(assoc-in %1 [:hand kaze] (:value %2))])
