@@ -11,9 +11,14 @@
                  :romaji "Dora"
                  :it "Dora"
                  :en "Dora"}}
+   :akadora {:wiki "https://riichi.wiki/Dora#Akadora"
+          :name {:ja "赤ドラ"
+                 :romaji "Akadora"
+                 :it "Dora Rossa"
+                 :en "Red Dora"}}
    :menzen-tsumo {:wiki "https://riichi.wiki/Menzenchin_tsumohou"
                   :name {:ja "門前清自摸和"
-                         :romaji "menzenchin tsumohou"
+                         :romaji "Menzenchin tsumohou"
                          :it "Pescata coperta"
                          :en "Self draw"}}
    :iipeikou {:wiki "https://riichi.wiki/Iipeikou"

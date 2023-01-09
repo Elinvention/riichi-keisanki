@@ -109,7 +109,7 @@
                        :text (capitalize (name option))
                        :on-action (assoc on-action :option option)})}})
 
-(defn- keyboard [{:keys [kmode akadora hand theme]}]
+(defn- keyboard [{:keys [kmode hand theme]}]
   {:fx/type :v-box
    :spacing 5
    :children [{:fx/type radio-group
@@ -117,24 +117,17 @@
                :options [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
                :value kmode
                :on-action {:event/type ::set-keyboard-mode}}
-              {:fx/type :check-box
-               :text "Akadora (red five)"
-               :selected akadora
-               :on-selected-changed {:event/type ::set-akadora}}
               {:fx/type :tile-pane
                :pref-columns 9
                :hgap 1
                :vgap 1
                :pref-tile-width 54
                :pref-tile-height 72
-               :children (for [t tile/all-34-tiles]
-                           (let [actual-t (if (and akadora (= 5 (:value t)))
-                                            (assoc t :red true)
-                                            t)]
-                             {:fx/type keyboard-key-button
-                              :disable (not (state/can-input? kmode hand actual-t))
-                              :tile actual-t
-                              :theme theme}))}]})
+               :children (for [t tile/all-34-tiles-with-redfives]
+                           {:fx/type keyboard-key-button
+                            :disable (not (state/can-input? kmode hand t))
+                            :tile t
+                            :theme theme})}]})
 
 (defn- hand-view [{:keys [hand theme]}]
   {:fx/type :tile-pane
@@ -288,7 +281,7 @@ Akadora 赤ドラ red fives"}
 Ippatsu 一発 \"one-shot\" win with riichi in 1 turn
 Chankan 搶槓 win with a tile stolen from an opponent's kan"}]})
 
-(defn- root [{:keys [hand keyboard-mode akadora theme language]}]
+(defn- root [{:keys [hand keyboard-mode theme language]}]
   {:fx/type :stage
    :showing true
    :title "Riichi calculator"
@@ -304,7 +297,6 @@ Chankan 搶槓 win with a tile stolen from an opponent's kan"}]})
                                         :theme theme}
                                        {:fx/type keyboard 
                                         :kmode keyboard-mode
-                                        :akadora akadora
                                         :hand hand
                                         :theme theme}
                                        {:fx/type results-view
@@ -319,7 +311,6 @@ Chankan 搶槓 win with a tile stolen from an opponent's kan"}]})
   (case (:event/type event)
     ::set-keyboard-mode (swap! *state assoc :keyboard-mode (:option event))
     ::keyboard-input (swap! *state keyboard-input (:tile event))
-    ::set-akadora (swap! *state assoc :akadora (:fx/event event))
     ::set-agari (swap! *state assoc-in [:hand :agari] (:option event))
     ::set-agaripai (swap! *state assoc-in [:hand :agaripai] (:tile event))
     ::advance-wind (advance-wind (:kind event))

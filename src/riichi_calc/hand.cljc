@@ -864,7 +864,7 @@
 (defn string-of-yakus [yakus lang]
   (let [yakumans (filter #(= :yakuman (val %)) yakus)
         yaku-lines (map (fn [yaku]
-                          (let [yname (get-in yakudb [(key yaku) :name lang])
+                          (let [yname (get-in yakudb [(key yaku) :name lang] (name (key yaku)))
                                 yval (if (integer? (val yaku))
                                        (val yaku)
                                        (s/capitalize (name (val yaku))))]
