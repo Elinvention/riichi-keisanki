@@ -171,11 +171,31 @@
     (is (= 13 (hand/round-thousandth 12500)))
     (is (= 13 (hand/round-thousandth 12400)))
     (is (= 13 (hand/round-thousandth 12600))))
-  (testing "dealer ron"
+  (testing "dealer ron 1 han"
     (is (= 1500 (:ron-pay (hand/dealer-ron {:regular 1} 30))))
+    (is (= 2000 (:ron-pay (hand/dealer-ron {:regular 1} 40))))
+    (is (= 2400 (:ron-pay (hand/dealer-ron {:regular 1} 50))))
+    (is (= 2900 (:ron-pay (hand/dealer-ron {:regular 1} 60))))
+    (is (= 3400 (:ron-pay (hand/dealer-ron {:regular 1} 70))))
+    (is (= 3900 (:ron-pay (hand/dealer-ron {:regular 1} 80))))
+    (is (= 4400 (:ron-pay (hand/dealer-ron {:regular 1} 90))))
+    (is (= 4800 (:ron-pay (hand/dealer-ron {:regular 1} 100))))
+    (is (= 5300 (:ron-pay (hand/dealer-ron {:regular 1} 110)))))
+  (testing "dealer ron 2 han"
     (is (= 2900 (:ron-pay (hand/dealer-ron {:regular 2} 30))))
+    (is (= 3900 (:ron-pay (hand/dealer-ron {:regular 2} 40))))
+    (is (= 4800 (:ron-pay (hand/dealer-ron {:regular 2} 50))))
+    (is (= 5800 (:ron-pay (hand/dealer-ron {:regular 2} 60))))
+    (is (= 6800 (:ron-pay (hand/dealer-ron {:regular 2} 70))))
+    (is (= 7700 (:ron-pay (hand/dealer-ron {:regular 2} 80))))
+    (is (= 8700 (:ron-pay (hand/dealer-ron {:regular 2} 90))))
+    (is (= 9600 (:ron-pay (hand/dealer-ron {:regular 2} 100))))
+    (is (= 10600 (:ron-pay (hand/dealer-ron {:regular 2} 110)))))
+  (testing "TODO: finire test"
     (is (= 5800 (:ron-pay (hand/dealer-ron {:regular 3} 30))))
-    (is (= 11600 (:ron-pay (hand/dealer-ron {:regular 4} 30)))))
+    (is (= 7700 (:ron-pay (hand/dealer-ron {:regular 3} 40))))
+    (is (= 11600 (:ron-pay (hand/dealer-ron {:regular 4} 30))))
+    (is (= 12000 (:ron-pay (hand/dealer-ron {:regular 4} 40)))))
   (testing "non dealer ron"
     (is (= 1000 (:ron-pay (hand/non-dealer-ron {:regular 1} 30))))
     (is (= 2000 (:ron-pay (hand/non-dealer-ron {:regular 2} 30))))
@@ -191,6 +211,12 @@
     (is (= 1000 (:dealer-pay (hand/non-dealer-tsumo {:regular 2} 30))))
     (is (= 2000 (:dealer-pay (hand/non-dealer-tsumo {:regular 3} 30))))
     (is (= 3900 (:dealer-pay (hand/non-dealer-tsumo {:regular 4} 30)))))
+  (testing "kazoe-yakuman"
+    (is (= 48000 (:ron-pay (hand/dealer-ron {:regular 13} 30))))
+    (is (= 32000 (:ron-pay (hand/non-dealer-ron {:regular 13} 30))))
+    (is (= 16000 (:everyone-pay (hand/dealer-tsumo {:regular 13} 30))))
+    (is (= {:dealer-pay 16000, :non-dealer-pay 8000}
+           (hand/non-dealer-tsumo {:regular 13} 30))))
   (testing "final scores"
     (is (= [35 5 -15 -25] (hand/final-scores [25000 25000 25000 25000] 25000 30000 true 20 10)))
     (is (= [46 13 -17 -40] (hand/final-scores [35700 32400 22200 9700] 25000 30000 true 20 10)))
@@ -336,8 +362,8 @@
       (is (= 2 (count d2)))
       (is (= 0 (hand/lower-evaluation d2)))
       (is (= 10 (hand/objective-fn d2))))
-    (let [h (hand/grouped-hand :min (group/groups
-                                     :tris [(tile/man 2) (tile/redfive :man) (tile/sou 4)])
+    (let [h (hand/grouped-hand :min (group/groups 
+                                     :tris [(tile/redfive :man) (tile/sou 4) (tile/pin 2)])
                                :an [(tile/man 2) (tile/man 2) (tile/man 2) (tile/sou 2) (tile/sou 2)])]
       (is (= -1 (hand/shanten h)))
       (is (hand/regular? h))))
