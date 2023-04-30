@@ -13,7 +13,7 @@
     "type": "git",
     "url": "gitea@code.elinvention.ovh:Elinvention/riichi-keisanki.git"
   },
-  "author": "",
+  "author": "Elia Argentieri",
   "license": "GPL-3.0",
   "devDependencies": {
     "shadow-cljs": "^2.20.2"
