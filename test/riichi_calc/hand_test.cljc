@@ -337,7 +337,7 @@
       (is (= 0 (hand/lower-evaluation d2)))
       (is (= 10 (hand/objective-fn d2))))
     (let [h (hand/grouped-hand :min (group/groups
-                                     :tris [(tile/man 2) (tile/redfive :man) (tile/sou 4)])
+                                     :tris [(tile/redfive :man) (tile/sou 4) (tile/pin 2)])
                                :an [(tile/man 2) (tile/man 2) (tile/man 2) (tile/sou 2) (tile/sou 2)])]
       (is (= -1 (hand/shanten h)))
       (is (hand/regular? h))))

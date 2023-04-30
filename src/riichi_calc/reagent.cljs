@@ -1,5 +1,5 @@
 (ns riichi-calc.reagent
-  (:require [clojure.string :refer [capitalize]]
+  (:require [clojure.string :as s]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [riichi-calc.group :as group]
@@ -12,12 +12,17 @@
 ;(enable-console-print!)
 
 (defonce *state (r/atom state/initial-state))
+(defonce *theme (r/atom :regular))
+(defonce *language (r/atom :romaji))
+(defonce *wizard (r/atom {:step 1 :open false}))
+(defonce *dragging (r/atom nil))
+(defonce *dragend-new-state (r/atom state/initial-state))
 
 (def tile-width 48)
 (def tile-height 64)
 
 (defn url-from-name [theme tname]
-  (str "assets/tiles/" (capitalize (name theme)) "/" tname ".svg"))
+  (str "assets/tiles/" (s/capitalize (name theme)) "/" tname ".svg"))
 
 (defn url [theme tile]
   (url-from-name theme (tile/tile-name tile)))
@@ -39,19 +44,38 @@
 (defn front-tile [theme tile]
   [:g [front-tile-bg theme] [front-tile-fg theme tile]])
 
-(def svg-tile-container
-  [:svg.mahjong-tile {:xmlns "http://www.w3.org/2000/svg"
-              :xmlnsXlink "http://www.w3.org/1999/xlink"
-              :view-box (str "0 0 " tile-width " " tile-height)}])
+(defn on-drag-start [tile event]
+  (.setData (. event -dataTransfer) "application/riichi" (pr-str tile))
+  (set! (.. event -dataTransfer -effectAllowed) "move")
+  (println "dragging tile" (pr-str tile))
+  (reset! *dragging tile)
+  (reset! *dragend-new-state @*state))
+
+(defn on-drag-end [_]
+  (println "drag end")
+  (reset! *dragging nil)
+  (reset! *state @*dragend-new-state))
+
+(defn svg-tile-container [svg-content]
+  [:div.mahjong-tile {}
+   [:svg {:xmlns "http://www.w3.org/2000/svg"
+                       :xmlnsXlink "http://www.w3.org/1999/xlink"
+                       :view-box (str "0 0 " tile-width " " tile-height)}
+    svg-content]])
 
 (defn svg-tile [theme tile]
-  (conj svg-tile-container (if (some? tile) (front-tile theme tile) (back-tile-bg theme))))
+  (svg-tile-container (if (some? tile)
+                        (front-tile theme tile)
+                        (back-tile-bg theme))))
+
+(defn rotate-svg [tile]
+  (assoc-in tile [1 :class] "rotated"))
 
 (defn svg-tile-rotated [theme tile]
-  [:span.rotated {} (svg-tile theme tile)])
+  (rotate-svg (svg-tile theme tile)))
 
 (defn svg-tile-fg [theme tile]
-  (conj svg-tile-container (front-tile-fg theme tile)))
+  (svg-tile-container (front-tile-fg theme tile)))
 
 (defn remove-from-hand [path index]
   (swap! *state update :hand hand/remove-from-hand path index))
@@ -62,14 +86,13 @@
     (-> (.play domaudio)
         (.catch #(println "Can't play sound:" (. % -message))))))
 
-(def update-hand-with-sfx (partial state/update-hand-with-sfx play-tile-down-sfx))
-
-(def keyboard-input (partial state/keyboard-input update-hand-with-sfx))
-
 (defn keyboard-key [update-state-fn theme tile enabled]
   (let [plain-tile (svg-tile theme tile)]
     (if enabled
-      (assoc-in plain-tile [1 :on-click] #(swap! *state update-state-fn tile))
+      (assoc-in plain-tile [1] {:on-click #(swap! *state update-state-fn tile)
+                                :draggable true
+                                :on-drag-start (partial on-drag-start tile)
+                                :on-drag-end on-drag-end})
       (update-in plain-tile [1 :style] assoc :opacity "50%"))))
 
 (defn radio-group [options value on-change]
@@ -80,7 +103,7 @@
                               :name (name option)
                               :checked (= option value)
                               :on-change #(on-change option)}]
-                     (capitalize (name option))])])
+                     (s/capitalize (name option))])])
 
 (defn checkboxes [boxes on-change]
   [:div.control
@@ -97,14 +120,48 @@
                :checked checked
                :disabled disabled
                :on-change closure}]
-      " " (capitalize bname)])])
+      " " (s/capitalize bname)])])
 
 (defn settings-render []
   [:div#settings
    [:fieldset.field [:legend "Theme"]
-    [radio-group [:regular :black] (:theme @*state) #(swap! *state assoc :theme %)]]
+    [radio-group [:regular :black] @*theme (partial reset! *theme)]]
    [:fieldset.field [:legend "Yaku Names Language"]
-    [radio-group [:ja :romaji :it :en] (:language @*state) #(swap! *state assoc :language %)]]])
+    [radio-group [:ja :romaji :it :en] @*language (partial reset! *language)]]])
+
+(defn on-drop [event]
+  (.preventDefault event)
+  (let [basket (keyword (s/lower-case (.. event -target -innerText)))
+        tile @*dragging]
+    (println (name basket) " received " tile) 
+    (reset! *dragend-new-state
+           (case basket
+             :an (state/an-conj @*state tile)
+             :chii (state/chii-conj @*state tile)
+             :pon (state/pon-conj @*state tile)
+             :kan (state/kan-conj @*state tile)
+             :ankan (state/ankan-conj @*state tile)
+             (do (println "Unknown basket") @*state)))))
+
+(defn on-drag-over [event]
+  (.preventDefault event)
+  (set! (.. event -dataTransfer -dropEffect) "move"))
+
+(defn keyboard-baskets-component []
+  (let [dnd {:on-drop on-drop :on-drag-over on-drag-over}
+        {:keys [hand]} @*state
+        dragging @*dragging]
+    [:div.columns.is-5
+     (when (or (nil? dragging) (hand/can-add-tile? hand dragging))
+       [:div.column [:p.notification.is-info dnd "An"]])
+     (when (or (nil? dragging) (hand/can-add-chii? hand dragging))
+       [:div.column [:p.notification.is-primary dnd "Chii"]])
+     (when (or (nil? dragging) (hand/can-add-pon? hand dragging))
+       [:div.column [:p.notification.is-warning dnd "Pon"]])
+     (when (or (nil? dragging) (hand/can-add-kan? hand dragging))
+       [:div.column [:p.notification.is-danger dnd "Kan"]])
+     (when (or (nil? dragging) (hand/can-add-kan? hand dragging))
+       [:div.column [:p.notification.is-link dnd "Ankan"]])]))
 
 (defn keyboard-mode-render []
    [:fieldset#keyboard-mode.field [:legend "Keyboard mode:"]
@@ -142,22 +199,22 @@
        ^{:key tile-row} [:span.tile-row tile-row])]))
 
 (defn keyboard-render []
-  (let [{:keys [keyboard-mode hand theme]} @*state 
+  (let [{:keys [keyboard-mode hand]} @*state 
         enabled? (partial state/can-input? keyboard-mode hand)]
-    [keyboard-widget theme tile/all-34-tiles-with-redfives enabled? keyboard-input]))
+    [keyboard-widget @*theme tile/all-34-tiles-with-redfives enabled? state/keyboard-input]))
 
 (defn hand-tile [tile path pos svg-tile-fn dora]
-  (cond-> (svg-tile-fn (:theme @*state) tile)
+  (cond-> (svg-tile-fn @*theme tile)
     true (assoc-in [1 :on-click] #(remove-from-hand path pos))
     dora (assoc-in [1 :class] "dora")))
 
 (defn agaripai-view [tile]
   [:div.tile-button [:div "Agaripai"]
-   (assoc-in (svg-tile (:theme @*state) tile) [1 :on-click]
+   (assoc-in (svg-tile @*theme tile) [1 :on-click]
              #(swap! *state assoc-in [:hand :agaripai] nil))])
 
 (defn dorahyouji-tile [tile index]
-  (cond-> (svg-tile (:theme @*state) tile)
+  (cond-> (svg-tile @*theme tile)
     tile (assoc-in [1 :on-click] #(remove-from-hand :dorahyouji index))))
 
 (defn dorahyouji-widget [{:keys [extra-yaku dorahyouji]}]
@@ -174,7 +231,7 @@
   (swap! *state update-in [:hand wind] tile/wind-next))
 
 (defn- wind-button [wind kind theme]
-  [:div.tile-button [:div (capitalize (name kind))]
+  [:div.tile-button [:div (s/capitalize (name kind))]
    (assoc-in (svg-tile theme wind) [1 :on-click] #(advance-wind kind))])
 
 (defn- hand-an-render [{:keys [an] :as hand}]
@@ -192,24 +249,29 @@
    (map-indexed vector an)))
 
 (defn- hand-min-render [{:keys [min] :as hand}]
-  (for [[index group] (map-indexed vector min)
-        [i tile] (map-indexed vector (group/expand group))]
-        ;;{:fx/type min-view :tile tile :index index :rotate (if (= i 0) 90 0) :theme theme}
-    ^{:key (str "min" tile index i)}
-    [hand-tile tile :min index (if (= i 0) svg-tile-rotated svg-tile) (hand/dora? hand tile)]))
+  (for [[i group] (map-indexed vector min)
+        [j tile] (map-indexed vector (group/expand group))]
+    ^{:key (str "min" tile i j)}
+    [hand-tile tile :min i (if (= j 0) svg-tile-rotated svg-tile) (hand/dora? hand tile)]))
 
 (defn hand-render []
   (let [{:keys [hand]} @*state]
     [:div.hand (concat (hand-an-render hand) (hand-min-render hand))]))
 
 (defn wizard-close! []
-  (swap! *state assoc-in [:wizard :open] false))
+  (swap! *wizard assoc :open false))
 
 (defn wizard-open! []
-  (swap! *state assoc-in [:wizard :open] true))
+  (swap! *wizard assoc :open true))
 
 (defn wizard-toggle! []
-  (swap! *state update-in [:wizard :open] not))
+  (swap! *wizard update :open not))
+
+(defn wizard-step-prev! []
+  (swap! *wizard update :step (comp (partial max 1) dec)))
+
+(defn wizard-step-next! []
+  (swap! *wizard update :step (comp (partial min 6) inc)))
 
 (defn buttons []
   [:div.field
@@ -217,7 +279,7 @@
    [:button.button.is-danger {:on-click #(reset! *state state/initial-state)} "Reset"]])
 
 (defn hand-properties-render []
-  (let [{:keys [hand theme language]} @*state]
+  (let [{:keys [hand]} @*state theme @*theme language @*language]
     [:<>
      [buttons]
      [:div#hand-properties.field
@@ -230,10 +292,10 @@
 
 
 
-(defn wizard-steps [current-step {:keys [theme hand]}]
+(defn wizard-steps [current-step {:keys [hand]}]
   [:ul.steps.has-content-centered.is-horizontal
-   (let [steps [{:icon (svg-tile-fg theme (tile/wind (:jikaze hand))) :title "Jikaze"}
-                {:icon (svg-tile-fg theme (tile/wind (:bakaze hand))) :title "Bakaze"}
+   (let [steps [{:icon (svg-tile-fg @*theme (tile/wind (:jikaze hand))) :title "Jikaze"}
+                {:icon (svg-tile-fg @*theme (tile/wind (:bakaze hand))) :title "Bakaze"}
                 {:icon nil :title (gstring/unescapeEntities "Dora&shy;hyouji")}
                 {:icon nil :title "Closed hand"}
                 {:icon nil :title "Open hand"}
@@ -244,12 +306,6 @@
        [:li.steps-segment {:class (when (= (inc step) current-step) "is-active")}
         [:span.steps-marker (when (some? icon) [:span.icon icon])]
         [:span.steps-content [:p {:style {:margin-top "8px"}} title]]]))])
-
-(defn wizard-step-prev! []
-  (swap! *state update-in [:wizard :step] (comp (partial max 1) dec)))
-
-(defn wizard-step-next! []
-  (swap! *state update-in [:wizard :step] (comp (partial min 6) inc)))
 
 (defn agari! [agari]
   (swap! *state assoc-in [:hand :agari] agari))
@@ -270,33 +326,29 @@
 (defn wizard-wind-keyboard [theme kaze]
   [keyboard-widget theme tile/wind-tiles (constantly true) #(assoc-in %1 [:hand kaze] (:value %2))])
 
-(def pon-conj! (partial state/pon-conj update-hand-with-sfx))
-(def an-conj! (partial state/an-conj update-hand-with-sfx))
-(def dorahyouji-conj! (partial state/dorahyouji-conj update-hand-with-sfx))
-
 (defn wizard-agaripai-keyboard [theme hand]
   [keyboard-widget theme tile/all-34-tiles-with-redfives (partial hand/can-agaripai? hand) state/set-agaripai])
 
 (defn wizard-open-hand-keyboard [theme hand]
-  [keyboard-widget theme tile/all-34-tiles-with-redfives (partial hand/can-add-pon? hand) pon-conj!])
+  [keyboard-widget theme tile/all-34-tiles-with-redfives (partial hand/can-add-pon? hand) state/pon-conj])
 
 (defn wizard-closed-hand-keyboard [theme hand]
-  [keyboard-widget theme tile/all-34-tiles-with-redfives (partial hand/can-add-tile? hand) an-conj!])
+  [keyboard-widget theme tile/all-34-tiles-with-redfives (partial hand/can-add-tile? hand) state/an-conj])
 
 (defn dorahyouji-keyboard [theme hand]
-  [keyboard-widget theme tile/all-34-tiles-with-redfives (partial hand/can-add-dorahyouji? hand) dorahyouji-conj!])
+  [keyboard-widget theme tile/all-34-tiles-with-redfives (partial hand/can-add-dorahyouji? hand) state/dorahyouji-conj])
 
 (defn wizard-render []
-  (let [{:keys [hand wizard theme]} @*state]
-    [(if (:open wizard) :div#wizard.modal.is-active :div#wizard.modal)
-     [:div.modal-background {:on-click #(swap! *state assoc-in [:wizard :open] false)}]
+  (let [{:keys [hand]} @*state {:keys [open step]} @*wizard theme @*theme]
+    [(if open :div#wizard.modal.is-active :div#wizard.modal)
+     [:div.modal-background {:on-click wizard-close!}]
      [:div.modal-content
       [:div.card
        [:div.card-header [:p.card-header-title "Wizard"]]
        [:div.card-content
-        [wizard-steps (:step wizard) @*state]] 
+        [wizard-steps step @*state]] 
        [:div.block.has-text-centered
-        (case (:step wizard)
+        (case step
           1 [:div [:p "Please choose jikaze"] [wizard-wind-keyboard theme :jikaze]]
           2 [:div [:p "Please choose bakaze"] [wizard-wind-keyboard theme :bakaze]]
           3 [:div [:p "Please choose dorahyouji"] [dorahyouji-keyboard theme hand] [dorahyouji-widget hand]]
@@ -304,16 +356,16 @@
           5 [:div [:p "Please enter open hand"] [wizard-open-hand-keyboard theme hand] [hand-render]]
           6 [:div [:p "Please enter agaripai"] [wizard-agaripai-keyboard theme hand] [agaripai-view (:agaripai hand)]]
           (swap! *state assoc-in [:wizard :step] 1))]
-       [wizard-nav (:step wizard)]]]
+       [wizard-nav step]]]
      [:button.modal-close.is-large {:aria-label "close"
-                                    :on-click #(swap! *state assoc-in [:wizard :open] false)}]]))
+                                    :on-click wizard-close!}]]))
 
 (defn result-win [lang {:keys [yakus han fu score]}]
   [:table [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
    [:tbody
     (for [yaku yakus
           :let [wiki (get-in yakudb [(key yaku) :wiki])
-                name (get-in yakudb [(key yaku) :name lang] (capitalize (name (key yaku))))]]
+                name (get-in yakudb [(key yaku) :name lang] (s/capitalize (name (key yaku))))]]
       ^{:key (str (key yaku) (val yaku))}
       [:tr [:td (if (nil? wiki) name [:a {:href wiki :target "_blank"} name])] [:td (val yaku)]])
     [:tr.total [:td "Total"] [:td (hand/string-of-han han fu)]]
@@ -332,17 +384,151 @@
       [ukeire-tile theme tile])]])
 
 (defn results-render []
-  (let [{:keys [hand theme language]} @*state
+  (let [{:keys [hand]} @*state theme @*theme language @*language
         {:keys [summary] :as res} (hand/results hand language)]
     (case (:type res)
       (:incomplete :invalid :agaripai :no-yaku) [:p summary]
       :tenpai (result-tenpai theme res)
       :winning (result-win language res))))
 
+(defn new-key-prototype []
+  (let [long-press (r/atom {:long false})]
+   (fn [] 
+     (let [plain-tile (svg-tile :regular (tile/wind :east))
+           enabled true
+           tile (-> plain-tile
+                    (assoc-in [1 :on-mouse-down]
+                              (fn []
+                                (println "mouse-down")
+                                (swap! long-press assoc :long false :start (js/Date.now))
+                                (->> (js/setTimeout (fn [] 
+                                                      (println "Timer fired!")
+                                                      (let [elapsed (- (js/Date.now) (:start @long-press))]
+                                                             (when (> elapsed 400)
+                                                               (swap! long-press assoc :long true)
+                                                               (println "Detected long press" @long-press elapsed))))
+                                                    500)
+                                     (swap! long-press assoc :timer))
+                                (println @long-press)))
+                    (assoc-in [1 :on-mouse-up]
+                              (fn []
+                                (println "clearTimeout")
+                                (js/clearTimeout (:timer @long-press))))
+                    )]
+       (if enabled
+         (if (:long @long-press)
+           [:div
+            [:div {:style {:background-color "red" :width "50px" :height "50px"}}]
+            [:div {:style {:background-color "green" :width "50px" :height "50px"}}]
+            [:div {:style {:background-color "blue" :width "50px" :height "50px"}}]
+            tile]
+           tile)
+         (update-in plain-tile [1 :style] assoc :opacity "50%"))))))
+
+
+
+(defonce *tile-chooser-state (r/atom []))
+
+(def plus-tile (assoc-in
+                (svg-tile-container
+                 [:g (front-tile-bg @*theme)
+                  [:image {:xlinkHref "assets/icons/plus.svg"
+                           :width 40
+                           :transform "translate(4, 12)"
+                           :on-drag-start #(.preventDefault %)}]])
+                [1 :on-click] #(swap! *tile-chooser-state conj true)))
+
+(def back-tile (assoc-in
+                (svg-tile-container
+                 [:g (front-tile-bg @*theme)
+                  [:image {:xlinkHref "assets/icons/back.svg"
+                           :width 40
+                           :transform "translate(4, 12)"
+                           :on-drag-start #(.preventDefault %)}]])
+                [1 :on-click] (fn [] (swap! *tile-chooser-state #(if (empty? %) % (pop %))))))
+
+(def seeds [(tile/man 1) (tile/sou 1) (tile/pin 1) (tile/wind :east) (tile/dragon :red)])
+
+(defn choose-seed-tile [theme tile]
+  (assoc-in (svg-tile theme tile) [1 :on-click] #(swap! *tile-chooser-state conj (:seed tile))))
+
+(defn choose-value-tile [theme tile]
+  (assoc-in (svg-tile theme tile) [1 :on-click] #(swap! *tile-chooser-state conj (:value tile))))
+
+(defn repeat-tile [n theme tile]
+  (for [i (range n)]
+    ^{:key i} [svg-tile theme tile]))
+
+(defn choose-call! [fn tile]
+  (swap! *state fn tile))
+
+(defn choose-pon [theme tile]
+  (when (hand/can-add-pon? (:hand @*state) tile)
+    [:div.pon {:on-click #(choose-call! state/pon-conj tile)}
+     (repeat-tile 3 theme tile)]))
+
+(defn choose-kan [theme tile]
+  (when (hand/can-add-kan? (:hand @*state) tile)
+    [:div.kan {:on-click #(choose-call! state/kan-conj tile)}
+     (repeat-tile 4 theme tile)]))
+
+(defn choose-chii [theme tile]
+  (when-let [tiles (tile/straight tile)]
+    (when (hand/can-add-chii? (:hand @*state) tile)
+      [:div.chii {:on-click #(choose-call! state/chii-conj tile)}
+       (for [[i t] (map-indexed vector tiles)]
+         ^{:key i} [svg-tile theme t])])))
+
+(defn choose-atama [theme tile]
+  (when (hand/can-add-tile? (:hand @*state) tile 2)
+    [:div.atama {:on-click #(choose-call! state/atama-conj tile)}
+     (repeat-tile 2 theme tile)]))
+
+(defn choose-ankou [theme tile]
+  (when (hand/can-add-pon? (:hand @*state) tile)
+    [:div.ankou {:on-click #(choose-call! state/ankou-conj tile)}
+     (repeat-tile 3 theme tile)]))
+
+(defn choose-anjun [theme tile]
+  (when-let [tiles (tile/straight tile)]
+    (when (hand/can-add-chii? (:hand @*state) tile)
+      [:div.anjun {:on-click #(choose-call! state/anjun-conj tile)}
+       (for [t tiles]
+         ^{:key (pr-str t)} [svg-tile theme t])])))
+
+(defn choose-ankan [theme tile]
+  (when (hand/can-add-kan? (:hand @*state) tile)
+    [:div.ankan {:on-click #(choose-call! state/ankan-conj tile)}
+     (for [i (range 4)]
+       ^{:key i} [svg-tile theme (when (< 0 i 3) tile)])]))
+
+(defn choose-group [theme tile]
+  [:<>
+   [:div.group.choose
+    [:div.open [choose-pon theme tile] [choose-chii theme tile] [choose-kan theme tile]]
+    [:div.close [choose-atama theme tile] [choose-ankou theme tile] [choose-anjun theme tile] [choose-ankan theme tile]]]
+   back-tile])
+
+(defn tile-chooser [[_ seed value :as state] theme]
+  (case (count state)
+    0 (when (> (hand/space-left (:hand @*state)) 0) plus-tile)
+    1 [:<> [:div.choose (for [t seeds] ^{:key (pr-str t)} [choose-seed-tile theme t])] back-tile]
+    2 [:<> [:div.choose (for [t (get tile/by-seed seed)] ^{:key (pr-str t)} [choose-value-tile theme t])] back-tile]
+    [choose-group theme (tile/tile seed value)]))
+
+(defn new-input-prototype []
+  (let [tc @*tile-chooser-state
+        theme @*theme]
+    (conj (hand-render) (tile-chooser tc theme))))
+
+
 (defn app-render []
   [:<>
+   ;[new-key-prototype]
+   [new-input-prototype]
    [hand-properties-render]
    [keyboard-render]
+   [keyboard-baskets-component]
    [keyboard-mode-render]
    [hand-render]
    [settings-render]

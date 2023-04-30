@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg _SVGFile__filename="oldscale/actions/ark_new.svg" version="1.0" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ <path d="m6.68 4.69c-1.11 0-2 .896-2 2.01v46.6c0 1.11.89 2.01 2 2.01h46.6c1.11 0 2-.896 2-2.01v-46.6c0-1.11-.89-2.01-2-2.01h-46.6z" fill="none" stroke="#fff" stroke-linejoin="round" stroke-width="8.12"/>
+ <g transform="matrix(.998 0 0 1 .0197 -.453)">
+  <path d="m6.68 5.12c-1.11 0-2 .892-2 2v46.4c0 1.11.892 2 2 2h46.7c1.11 0 2-.892 2-2v-46.4c0-1.11-.892-2-2-2h-46.7z" fill="#fff" fill-rule="evenodd" stroke="#000" stroke-linejoin="round" stroke-width="3.12"/>
+  <text transform="scale(1 .998)" x="7.0113521" y="37.192623" font-family="'Liberation Sans'" font-size="18.7px" stroke-width=".997" style="line-height:1.25" xml:space="preserve"><tspan x="7.0113521" y="37.192623" font-family="'Liberation Sans'" font-size="18.7px" font-weight="bold" stroke-width=".997">Back</tspan></text>
+ </g>
+ <metadata>
+  <rdf:RDF>
+   <cc:Work>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <cc:license rdf:resource="http://creativecommons.org/licenses/publicdomain/"/>
+    <dc:publisher>
+     <cc:Agent rdf:about="http://openclipart.org/">
+      <dc:title>Openclipart</dc:title>
+     </cc:Agent>
+    </dc:publisher>
+   </cc:Work>
+   <cc:License rdf:about="http://creativecommons.org/licenses/publicdomain/">
+    <cc:permits rdf:resource="http://creativecommons.org/ns#Reproduction"/>
+    <cc:permits rdf:resource="http://creativecommons.org/ns#Distribution"/>
+    <cc:permits rdf:resource="http://creativecommons.org/ns#DerivativeWorks"/>
+   </cc:License>
+  </rdf:RDF>
+ </metadata>
+</svg>

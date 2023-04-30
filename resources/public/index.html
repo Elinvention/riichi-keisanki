@@ -61,7 +61,7 @@
           rotate: -3deg;
         }
       }
-      .rotated {
+      .rotated, .pon > :first-child, .chii > :first-child, .kan > :first-child {
         transform: rotate(90deg);
         margin: 0 10px 0 10px;
         max-height: 72px;
@@ -99,6 +99,21 @@
         flex-shrink: 0;
         text-align: center;
         border-top: 5px solid rgb(185, 60, 60);
+      }
+      .pon, .chii, .kan, .open, .close, .group, .choose, .atama, .anjun, .ankou, .ankan {
+        display: flex;
+        gap: 2px;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      .open, .close {
+        gap: 10px;
+      }
+      .group {
+        gap: 20px;
+      }
+      .choose {
+        opacity: 0.8;
       }
     </style>
   </head>
