@@ -37,6 +37,15 @@
 (defn tiles-only [tiles-and-groups]
   (vec (remove :kind tiles-and-groups)))
 
+(defn atama-only [hand]
+  (some #(if (group/couple? %) % false) (groups-only (:an hand))))
+
+(defn an-tiles-only [hand]
+  (tiles-only (:an hand)))
+
+(defn min-tiles-only [hand]
+  (tiles-only (:min hand)))
+
 (defn split-tiles-groups [tiles-and-groups]
   (let [groups (groups-only tiles-and-groups)
         tiles (tiles-only tiles-and-groups)]
@@ -203,10 +212,6 @@
                [:straight [_ _ agaripai] 3] :penchan
                [:straight [_ _ agaripai] _] :ryanmen))))))
 
-(defn juusan-menmachi?
-  [{:keys [agaripai an]}]
-  (contains? (set (tiles-only an)) agaripai))
-
 ; Yaku yeeeee
 (defn chiitoitsu?
   "This hand is composed of seven pairs."
@@ -218,16 +223,30 @@
    one extra terminal or honour tile."
   [{:keys [an min]}]
   (let [exp-an (expand-groups an)]
-    (and (empty? min) (= (count exp-an) 14)
+    (and (empty? min)
+         (= (count exp-an) 14)
          (every? #(some #{%} exp-an) tile/kokushi-tiles)
          (some (every-pred group/couple? group/not-simple?) an))))
+
+(defn kokushi-hand 
+  ([atamapai]
+   (kokushi-hand atamapai nil))
+  ([atamapai agaripai]
+   (hand :an (conj (vec (disj tile/kokushi-tiles atamapai)) (group/couple atamapai))
+         :agaripai agaripai)))
+
+(defn juusan-menmachi?
+  [{:keys [agaripai] :as hand}]
+  (tile/same? (first (:tiles (atama-only hand))) agaripai))
 
 (defn kokushi-musou-juusan-menmachi?
   "This happens when you have all the tiles required by kokushi musou and the
    wait is composed of 13 tiles."
   [{:keys [an min] :as hand}]
   (let [exp-an (expand-groups an)]
-    (and (empty? min) (= (count exp-an) 14) (juusan-menmachi? hand)
+    (and (empty? min)
+         (= (count exp-an) 14)
+         (juusan-menmachi? hand)
          (every? #(some #{%} exp-an) tile/kokushi-tiles)
          (some (every-pred group/couple? group/not-simple?) an))))
 

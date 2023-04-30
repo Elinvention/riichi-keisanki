@@ -146,11 +146,11 @@
                           :romaji "Kokushi musou"
                           :it "Tredici orfani"
                           :en " Thirteen orphans"}}
-   :kokushi-musou-juusan-menmachi {:wiki "https://riichi.wiki/Kokushi_Musou"
-                                   :name {:ja "国士無双１３面待ち"
-                                          :romaji "Kokushi musou juusan menmachi"
-                                          :it "Tredici orfani con 13 attese"
-                                          :en " Thirteen orphans with 13-way wait"}}
+   :kokushi-juusan {:wiki "https://riichi.wiki/Kokushi_Musou"
+                    :name {:ja "国士無双１３面待ち"
+                           :romaji "Kokushi musou juusan menmachi"
+                           :it "13 orfani con 13 attese"
+                           :en "13 orphans with 13-way wait"}}
    :suuankou {:wiki "https://riichi.wiki/Suuankou"
               :name {:ja "四暗刻"
                      :romaji "Suuankou"

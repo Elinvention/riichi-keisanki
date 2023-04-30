@@ -412,7 +412,9 @@
       (is (= 0 (hand/shanten (hand/grouped k))))
       (is (= -1 (hand/shanten (hand/grouped kc))))
       (is (hand/tenpai? (hand/grouped k)))
-      (is (not (hand/tenpai? (hand/grouped kc)))))))
+      (is (not (hand/tenpai? (hand/grouped kc)))))
+    (is (hand/juusan-menmachi? (assoc (hand/kokushi-hand (tile/man 1)) :agaripai (tile/man 1))))
+    (is (not (hand/juusan-menmachi? (assoc (hand/kokushi-hand (tile/man 1)) :agaripai (tile/sou 9)))))))
 
 (comment
   ;; TODO: REPL to proper tests
