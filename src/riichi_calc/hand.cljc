@@ -172,12 +172,12 @@
 
 (defn can-add-chii? [hand tile]
   (and (> (space-left hand) 2)
-       (let [tiles (tile/straight tile)]
+       (when-let [tiles (tile/straight tile)]
          (every? (partial can-add-tile? hand) tiles))))
 
 (defn can-add-red-chii? [hand tile]
   (and (> (space-left hand) 2)
-       (let [tiles (tile/red-straight tile)]
+       (when-let [tiles (tile/red-straight tile)]
          (every? (partial can-add-tile? hand) tiles))))
 
 (defn can-add-kan? [hand tile]
