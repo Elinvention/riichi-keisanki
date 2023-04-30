@@ -187,7 +187,7 @@
 (defn sort-tiles [tiles]
   (into [] (sort-by tile-key tiles)))
 
-(def conj-sort-tile (comp (partial sort-tiles) conj))
+(def conj-sort-tile (comp sort-tiles conj))
 
 (defn numeral-next [value]
   (inc (mod value 9)))
@@ -252,9 +252,12 @@
 
 (def honor-tiles literal-tiles) ; alias
 
+(def man-tiles (for [value (range 1 10)] (man value)))
+(def sou-tiles (for [value (range 1 10)] (sou value)))
+(def pin-tiles (for [value (range 1 10)] (pin value)))
+
 (def numeral-tiles
-  (for [seed [:man :sou :pin] value (range 1 10)]
-    (tile seed value)))
+  (concat man-tiles sou-tiles pin-tiles))
 
 (def all-34-tiles
   (vec (concat numeral-tiles literal-tiles)))
@@ -278,3 +281,9 @@
 (comment
   (tiles :man [5 5 4] :sou [1 1 4 4 7 7] :pin [2 2 5 5 8 8] :dragon [:red :green])
   )
+
+(def by-seed {:man man-tiles
+              :sou sou-tiles
+              :pin pin-tiles
+              :wind wind-tiles
+              :dragon dragon-tiles})

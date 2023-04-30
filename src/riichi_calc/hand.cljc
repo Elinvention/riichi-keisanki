@@ -157,10 +157,13 @@
   [hand]
   (and (= (space-left hand) 1) (= (shanten hand) 0)))
 
-(defn can-add-tile? [hand {:keys [red] :as tile}]
-  (and (> (space-left hand) 0)
-       (< (count-tile tile hand) 4)
-       (or (not red) (= 0 (tile/count-exact tile (expand hand))))))
+(defn can-add-tile?
+  ([hand {:keys [red] :as tile} n]
+   (and (>= (space-left hand) n)
+        (<= (count-tile tile hand) (- 4 n))
+        (or (not red) (= 0 (tile/count-exact tile (expand hand))))))
+  ([hand tile]
+   (can-add-tile? hand tile 1)))
 
 (defn can-add-pon? [hand {:keys [red] :as tile}]
   (and (> (space-left hand) 2)
