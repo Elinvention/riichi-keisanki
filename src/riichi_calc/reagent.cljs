@@ -1,5 +1,5 @@
 (ns riichi-calc.reagent
-  (:require [clojure.string :refer [capitalize]]
+  (:require [clojure.string :as s]
             [reagent.core :as r]
             [reagent.dom :as rdom]
             [riichi-calc.group :as group]
@@ -17,7 +17,7 @@
 (def tile-height 64)
 
 (defn url-from-name [theme tname]
-  (str "assets/tiles/" (capitalize (name theme)) "/" tname ".svg"))
+  (str "assets/tiles/" (s/capitalize (name theme)) "/" tname ".svg"))
 
 (defn url [theme tile]
   (url-from-name theme (tile/tile-name tile)))
@@ -80,7 +80,7 @@
                               :name (name option)
                               :checked (= option value)
                               :on-change #(on-change option)}]
-                     (capitalize (name option))])])
+                     (s/capitalize (name option))])])
 
 (defn checkboxes [boxes on-change]
   [:div.control
@@ -97,7 +97,7 @@
                :checked checked
                :disabled disabled
                :on-change closure}]
-      " " (capitalize bname)])])
+      " " (s/capitalize bname)])])
 
 (defn settings-render []
   [:div#settings
@@ -174,7 +174,7 @@
   (swap! *state update-in [:hand wind] tile/wind-next))
 
 (defn- wind-button [wind kind theme]
-  [:div.tile-button [:div (capitalize (name kind))]
+  [:div.tile-button [:div (s/capitalize (name kind))]
    (assoc-in (svg-tile theme wind) [1 :on-click] #(advance-wind kind))])
 
 (defn- hand-an-render [{:keys [an] :as hand}]
@@ -347,7 +347,7 @@
    [:tbody
     (for [yaku yakus
           :let [wiki (get-in yakudb [(key yaku) :wiki])
-                name (get-in yakudb [(key yaku) :name lang] (capitalize (name (key yaku))))]]
+                name (get-in yakudb [(key yaku) :name lang] (s/capitalize (name (key yaku))))]]
       ^{:key (str (key yaku) (val yaku))}
       [:tr [:td (if (nil? wiki) name [:a {:href wiki :target "_blank"} name])] [:td (val yaku)]])
     [:tr.total [:td "Total"] [:td (hand/string-of-han han fu)]]
