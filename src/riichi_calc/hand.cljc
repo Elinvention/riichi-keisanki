@@ -618,13 +618,20 @@
 (defn non-dealer-ron [han fu]
   {:ron-pay (round-up-to 100 (* 4 (basic-points han fu)))})
 
+(defn total-score [{:keys [ron-pay everyone-pay dealer-pay non-dealer-pay]}]
+  (+ ron-pay (* 3 everyone-pay) dealer-pay (* 2 non-dealer-pay)))
+
 (defn score [{:keys [jikaze agari]} han fu]
-  (-> (match [jikaze agari]
-        [:east   :ron] (dealer-ron han fu)
-        [_       :ron] (non-dealer-ron han fu)
-        [:east :tsumo] (dealer-tsumo han fu)
-        [_     :tsumo] (non-dealer-tsumo han fu))
-      (assoc :jikaze jikaze :agari agari)))
+  (let [split-score
+        (match [jikaze agari]
+          [:east   :ron] (dealer-ron han fu)
+          [_       :ron] (non-dealer-ron han fu)
+          [:east :tsumo] (dealer-tsumo han fu)
+          [_     :tsumo] (non-dealer-tsumo han fu))]
+      (assoc split-score
+             :jikaze jikaze
+             :agari agari
+             :total (total-score split-score))))
 
 (defn round-thousandth [score]
   (-> score (/ 1000) ceil int))
@@ -883,15 +890,21 @@
               (some? ron-pay) (str ron-pay))
       (some? sclass) (str " (" (capname sclass) ")"))))
 
+(defn speech-of-score [score]
+  (let [sclass (score-class score)]
+    (str (:total score) (when (some? sclass) (str " (" (capname sclass) ")")))))
+
+(defn string-of-yaku [lang yaku]
+  (let [yname (get-in yakudb [(key yaku) :name lang] (name (key yaku)))
+        yval (if (integer? (val yaku))
+               (val yaku)
+               (s/capitalize (name (val yaku))))]
+    (str "★ " yname ": " yval " han")))
+
 (defn string-of-yakus [yakus lang]
   (let [yakumans (filter #(= :yakuman (val %)) yakus)
-        yaku-lines (map (fn [yaku]
-                          (let [yname (get-in yakudb [(key yaku) :name lang] (name (key yaku)))
-                                yval (if (integer? (val yaku))
-                                       (val yaku)
-                                       (s/capitalize (name (val yaku))))]
-                            (str "★ " yname ": " yval)))
-             (if (empty? yakumans) yakus yakumans))]
+        yaku-lines (map (partial string-of-yaku lang)
+                        (if (empty? yakumans) yakus yakumans))]
     (s/join "\n" yaku-lines)))
 
 (defn string-of-han [{:keys [yakuman regular]} fu]

@@ -360,7 +360,41 @@
      [:button.modal-close.is-large {:aria-label "close"
                                     :on-click wizard-close!}]]))
 
-(defn result-win [lang {:keys [yakus han fu score]}]
+(defn lang-to-iso [lang]
+  (case lang
+    :romaji "jp-JP"
+    :it "it-IT"
+    :ja "ja-JP"
+    :en "en-US"
+    nil))
+
+(defn positions
+  [pred coll]
+  (keep-indexed (fn [idx x]
+                  (when (pred x)
+                    idx))
+                coll))
+
+(defn speak [lang text]
+  (println lang text)
+  (let [synth js/window.speechSynthesis
+        voices (.getVoices synth)
+        voice (get voices (first (positions #(#{(lang-to-iso lang)} (.-lang %)) voices)))
+        utterance (doto (js/SpeechSynthesisUtterance. text)
+                    (set! -voice voice)
+                    (set! -pitch 0))]
+    (when voice
+      (println "Found voice " (.-lang voice))
+      (.speak synth utterance))))
+
+(defn speech-of-result [lang {:keys [yakus score] :as result}]
+  (str
+   (s/join ". " (map (partial hand/string-of-yaku lang) yakus))
+   ". "
+   (hand/speech-of-score score)))
+
+(defn result-win [lang {:keys [yakus han fu score] :as result}]
+  (speak lang (speech-of-result lang result))
   [:table [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
    [:tbody
     (for [yaku yakus
