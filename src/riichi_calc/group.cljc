@@ -60,7 +60,8 @@
   (= (:kind group) :taatsu))
 
 (defn to-string [group]
-  (str "[" (apply str (map tile/tile-name (expand group))) "]"))
+  (str "[" (apply str (map tile/tile-unicode (expand group))) "]"))
+
 
 #?(:clj
    (defmethod print-method Group [group ^java.io.Writer w]
