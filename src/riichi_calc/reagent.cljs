@@ -366,11 +366,24 @@
       ^{:key (str "tenpai" theme (tile/tile-name tile))}
       [ukeire-tile theme tile])]])
 
+(defn agaripai-tile [theme tile]
+  [assoc-in (svg-tile theme tile) [1 :on-click]
+   #(swap! *state state/set-agaripai tile)])
+
+(defn result-agaripai [{:keys [an]} theme {:keys [summary]}]
+  [:<>
+   [:p summary]
+   [:div.tile-row
+    (for [tile (dedupe (tile/sort-tiles an))]
+      ^{:key (str "agaripai" theme (tile/tile-name tile))}
+      [agaripai-tile theme tile])]])
+
 (defn results-render []
   (let [{:keys [hand theme language]} @*state
         {:keys [summary] :as res} (hand/results hand language)]
     (case (:type res)
-      (:incomplete :invalid :agaripai :no-yaku) [:p summary]
+      (:incomplete :invalid :no-yaku) [:p summary]
+      :agaripai (result-agaripai hand theme res)
       :tenpai (result-tenpai theme res)
       :winning (result-win language res))))
 
