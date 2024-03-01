@@ -621,17 +621,22 @@
 (defn total-score [{:keys [ron-pay everyone-pay dealer-pay non-dealer-pay]}]
   (+ ron-pay (* 3 everyone-pay) dealer-pay (* 2 non-dealer-pay)))
 
-(defn score [{:keys [jikaze agari]} han fu]
-  (let [split-score
-        (match [jikaze agari]
-          [:east   :ron] (dealer-ron han fu)
-          [_       :ron] (non-dealer-ron han fu)
-          [:east :tsumo] (dealer-tsumo han fu)
-          [_     :tsumo] (non-dealer-tsumo han fu))]
-      (assoc split-score
-             :jikaze jikaze
-             :agari agari
-             :total (total-score split-score))))
+(defn score [{:keys [jikaze agari] :as hand}]
+  (let [yakus (list-yakus hand)
+        han (hans yakus)
+        fu (minipoints hand)
+        split-score (match [jikaze agari]
+                      [:east   :ron] (dealer-ron han fu)
+                      [_       :ron] (non-dealer-ron han fu)
+                      [:east :tsumo] (dealer-tsumo han fu)
+                      [_     :tsumo] (non-dealer-tsumo han fu))]
+    (assoc split-score
+           :jikaze jikaze
+           :agari agari
+           :total (total-score split-score)
+           :han hand
+           :fu fu
+           :yakus yakus)))
 
 (defn round-thousandth [score]
   (-> score (/ 1000) ceil int))
@@ -899,7 +904,7 @@
         yval (if (integer? (val yaku))
                (val yaku)
                (s/capitalize (name (val yaku))))]
-    (str "★ " yname ": " yval " han")))
+    (str "★ " yname ": " yval (when (integer? (val yaku)) " han"))))
 
 (defn string-of-yakus [yakus lang]
   (let [yakumans (filter #(= :yakuman (val %)) yakus)
@@ -932,9 +937,7 @@
         :else (let [yakus (list-yakus gh)]
                 (if (no-yaku? yakus)
                   {:type :no-yaku :summary "No yaku!"}
-                  (let [han (hans yakus)
-                        fu (minipoints gh)
-                        score (score gh han fu)]
+                  (let [{:keys [han fu] :as score} (score gh)]
                     {:type :winning
                      :summary (str "Winning hand!\nYakus:\n" (string-of-yakus yakus lang)
                                    "\nPoints: " (string-of-han han fu)

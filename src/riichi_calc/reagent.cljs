@@ -335,14 +335,15 @@
       (println "Found voice " (.-lang voice))
       (.speak synth utterance))))
 
-(defn speech-of-result [lang {:keys [yakus score] :as result}]
+(defn speech-of-result [lang {:keys [yakus score]}]
   (str
-   (s/join ". " (map (partial hand/string-of-yaku lang) yakus))
+   (s/join ". " (map (partial hand/string-of-yaku ({:romaji :ja} lang lang)) yakus))
    ". "
    (hand/speech-of-score score)))
 
 (defn result-win [lang {:keys [yakus han fu score] :as result}]
-  (speak lang (speech-of-result lang result))
+  (let [actual-lang ({:romaji :ja} lang lang)]
+    (speak actual-lang (speech-of-result actual-lang result)))
   [:table [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
    [:tbody
     (for [yaku yakus
