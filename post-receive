@@ -3,7 +3,7 @@
 set -e
 set -x
 
-export HOME=/var/lib/gitea
+export HOME=/var/lib/forgejo
 
 BARE_REPO=$HOME/repositories/elinvention/riichi-keisanki.git/
 WORKING_DIRECTORY=/var/tmp/riichi-keisanki
