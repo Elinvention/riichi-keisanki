@@ -17,10 +17,10 @@
            :wind (contains? #{:east :south :west :north} value)
            false)
      (Tile. seed value red)))
-  ([seed value] (tile seed value false)))
-(defn man [value & {:keys [red] :or {red false}}] (tile :man value red))
-(defn sou [value & {:keys [red] :or {red false}}] (tile :sou value red))
-(defn pin [value & {:keys [red] :or {red false}}] (tile :pin value red))
+  ([seed value] (tile seed (if (= 0 value) 5 value) (= 0 value))))
+(defn man [value] (tile :man value))
+(defn sou [value] (tile :sou value))
+(defn pin [value] (tile :pin value))
 (defn wind [value] (tile :wind value))
 (defn dragon [value] (tile :dragon value))
 (defn redfive [seed]
@@ -49,6 +49,7 @@
   (and (= :wind seed) (contains? #{:east :west :north :south} value)))
 
 (def honor? (some-fn wind? dragon?))
+(def literal? honor?)
 
 (def not-simple? (some-fn terminal? honor?))
 
@@ -275,12 +276,12 @@
 
 (def honor-tiles literal-tiles) ; alias
 
-(def man-tiles (for [value (range 1 10)] (man value)))
-(def sou-tiles (for [value (range 1 10)] (sou value)))
-(def pin-tiles (for [value (range 1 10)] (pin value)))
+(def man-tiles (mapv man (range 1 10)))
+(def sou-tiles (mapv sou (range 1 10)))
+(def pin-tiles (mapv pin (range 1 10)))
 
 (def numeral-tiles
-  (concat man-tiles sou-tiles pin-tiles))
+  (vec (concat man-tiles sou-tiles pin-tiles)))
 
 (def all-34-tiles
   (vec (concat numeral-tiles literal-tiles)))
@@ -294,19 +295,57 @@
 
 (def kokushi-tiles (set (filter (some-fn terminal? honor?) all-34-tiles)))
 
+(defn numeral-sort-key [num]
+  (cond
+    (= 0 num) 6
+    (<= 5 num) num
+    (> num 5) (inc num)))
+
 (defn tiles [& {_man :man _sou :sou _pin :pin _wind :wind _dragon :dragon}]
-  (vec (concat (map man (sort _man))
-               (map sou (sort _sou))
-               (map pin (sort _pin))
+  (vec (concat (map man (sort-by numeral-sort-key _man))
+               (map sou (sort-by numeral-sort-key _sou))
+               (map pin (sort-by numeral-sort-key _pin))
                (map wind (sort-by wind-key _wind))
                (map dragon (sort-by dragon-key _dragon)))))
 
 (comment
+  ;; example usage
   (tiles :man [5 5 4] :sou [1 1 4 4 7 7] :pin [2 2 5 5 8 8] :dragon [:red :green])
   )
 
-(def by-seed {:man man-tiles
-              :sou sou-tiles
-              :pin pin-tiles
-              :wind wind-tiles
-              :dragon dragon-tiles})
+(def by-seed (group-by :seed all-34-tiles))
+
+(defn to-notation [{:keys [value] :as tile}]
+  (cond
+    (redfive? tile) "0"
+    (numeral? tile) (str value)
+    (literal? tile) (str (+ 1 (.indexOf literal-tiles tile)))))
+
+(defn seed-from-notation [seed value]
+  (case seed
+    "m" :man
+    "s" :sou
+    "p" :pin
+    "z" (if (> value 4) :dragon :wind)))
+
+(def honors-map
+  {1 :east
+   2 :south
+   3 :west
+   4 :north
+   5 :white
+   6 :green
+   7 :red})
+
+(defn value-from-notation [seed value]
+  (case seed
+    (:man :sou :pin) value
+    (:wind :dragon) (honors-map value)))
+
+(defn from-notation [notation]
+  (if (not (< 1 (count notation) 3))
+    nil
+    (let [raw-value (parse-long (first notation))
+          seed (seed-from-notation (last notation) raw-value)
+          value (value-from-notation seed raw-value)]
+      (tile seed value))))

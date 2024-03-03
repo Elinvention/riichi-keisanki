@@ -62,6 +62,29 @@
 (defn to-string [group]
   (str "[" (apply str (map tile/tile-unicode (expand group))) "]"))
 
+(defn seed-to-notation [seed]
+  (case seed
+    :man "m"
+    :sou "s"
+    :pin "p"
+    :dragon "z"
+    :wind "z"))
+
+(defn to-notation [group]
+  (str (apply str (map tile/to-notation (expand group)))))
+
+(defn tiles-from-notation [notation seed]
+  (for [valuestr (butlast notation)
+        :let [value (tile/value-from-notation seed (parse-long valuestr))]]
+    (tile/tile seed value)))
+
+(defn from-notation [notation]
+  (cond
+    (re-matches #"[0-9]+[mspz]" notation)
+    (let [seed (tile/seed-from-notation (last notation) (parse-long (first notation)))
+          tiles (tiles-from-notation notation seed)]
+      (vec tiles))
+    :else nil))
 
 #?(:clj
    (defmethod print-method Group [group ^java.io.Writer w]

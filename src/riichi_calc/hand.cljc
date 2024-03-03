@@ -736,9 +736,11 @@
         ntaatsu (count (filter group/taatsu? blocks))]
     ;; start from 16 (insted of 8), subtract: 4 points per group, 2 points per pair,
     ;; 1 point per taatsu, taatsu instead of pair -2 points
+    ;; kokushi-shanten is ignored with too few tiles (5?) in hand
+    ;; chiitoitsu-shanten is ignored with too few pairs (< 4) in hand
     (min
      (- 16 (* 4 ngroups) (* 2 npairs) ntaatsu (if (and (>= nblocks 5) (= 0 npairs)) -2 0))
-     (kokushi-shanten tg)
+     (if (> (count visited) 5) (kokushi-shanten tg) 16)
      (if (>= npairs 4) (chiitoitsu-shanten tg) 16))))
 
 (defn lower-evaluation
@@ -781,14 +783,18 @@
           (recur decomp decomp-upper (apply conj (pop queue) cut) (inc steps))
           (recur best bound (apply conj (pop queue) cut) (inc steps)))))))
 
-(defn grouped [hand]
-  (->> hand
-       (:an)
+(defn grouped-tiles [tiles]
+  (->> tiles
        (tile/sort-tiles)
        (split-tiles-groups)
        (->decomposition)
        (group-branch-n-bound)
-       (:visited)
+       (:visited)))
+
+(defn grouped [hand]
+  (->> hand
+       (:an)
+       (grouped-tiles)
        (assoc hand :an)))
 
 (def grouped-hand (comp grouped hand))
@@ -948,3 +954,27 @@
   (cond-> (update hand path #(into (subvec % 0 index) (subvec % (inc index))))
     (and (= (get-in hand [path index]) agaripai)
          (= (count (filter (partial = agaripai) (expand hand))) 1)) (assoc :agaripai nil)))
+
+(def notation-seed-order "mspz")
+
+(defn tiles-to-notation [[seed tiles]]
+  (str (apply str (map tile/to-notation tiles))
+       (group/seed-to-notation seed)))
+
+(defn groups-to-notation [[seed groups]]
+  (str (apply str (map group/to-notation groups))
+       (group/seed-to-notation seed)))
+
+(defn to-notation [an-min]
+  (apply str
+         (sort-by #(s/index-of notation-seed-order (last %))
+                  (concat (->> (groups-only an-min)
+                               (group-by :seed)
+                               (map groups-to-notation))
+                          (->> (tiles-only an-min)
+                               (group-by :seed)
+                               (map tiles-to-notation))))))
+
+(defn from-notation [notation]
+  (let [groups (s/split notation #"(?<=m|s|p|z)")]
+    (vec (remove nil? (flatten (map group/from-notation groups))))))

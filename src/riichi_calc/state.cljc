@@ -69,7 +69,16 @@
     (and (= (hand/space-left hand) 0) (some #{tile} (hand/expand hand))) (assoc-in state [:hand :agaripai] tile)
     :else state))
 
-(defn keyboard-input [update-fn {:keys [hand keyboard-mode] :as state} tile]
+(defn next-keyboard-mode [{:keys [hand]} keyboard-mode]
+  (let [space (hand/space-left hand)
+        agaripai (:agaripai hand)]
+    (match [space agaripai keyboard-mode]
+      [1 nil _] :agaripai
+      [0 nil _] :agaripai
+      [(_ :guard #(< % 3)) _ (:or :chii :pon :kan :ankan)] :an
+      :else keyboard-mode)))
+
+(defn keyboard-input [update-fn {:keys [keyboard-mode] :as state} tile]
   (as-> state new-state
     (case keyboard-mode
       :an (an-conj update-fn state tile)
@@ -80,11 +89,4 @@
       :dorahyouji (dorahyouji-conj update-fn state tile)
       :agaripai (set-agaripai state tile)
       :else new-state)
-    (let [space (hand/space-left (:hand new-state))
-          agaripai (:agaripai (:hand new-state))
-          next-kmode (match [space agaripai keyboard-mode]
-                       [1 nil _] :agaripai
-                       [0 nil _] :agaripai
-                       [(_ :guard #(< % 3)) _ (:or :chii :pon :kan :ankan)] :an
-                       :else keyboard-mode)]
-      (assoc new-state :keyboard-mode next-kmode))))
+    (update new-state :keyboard-mode (partial next-keyboard-mode new-state))))
