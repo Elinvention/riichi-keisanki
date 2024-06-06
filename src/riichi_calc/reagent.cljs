@@ -331,6 +331,7 @@
         utterance (doto (js/SpeechSynthesisUtterance. text)
                     (set! -voice voice)
                     (set! -pitch 0))]
+    (when (.-speaking synth) (.cancel synth))
     (when voice
       (println "Found voice " (.-lang voice))
       (.speak synth utterance))))
