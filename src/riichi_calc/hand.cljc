@@ -171,7 +171,7 @@
        (or (not red) (= 0 (tile/count-exact tile (expand hand))))))
 
 (defn can-add-chii? [hand tile]
-  (and (> (space-left hand) 2)
+  (and (tile/numeral? tile) (< 0 (:value tile) 8) (> (space-left hand) 2)
        (let [tiles (tile/straight tile)]
          (every? (partial can-add-tile? hand) tiles))))
 

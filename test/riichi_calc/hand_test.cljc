@@ -470,6 +470,16 @@
       (t/tiles :pin [1 1 1 1 2 3]) "111123p"
       (t/couple (t/pin 9)) "99p")))
 
+(deftest can-add-test 
+  (testing "Can add chii?"
+    (is (not (h/can-add-chii? (h/hand) (t/dragon :white))))
+    (is (not (h/can-add-chii? (h/hand) (t/wind :east))))
+    (is (not (h/can-add-chii? (h/hand) (t/man 9))))
+    (is (h/can-add-chii? (h/hand) (t/man 7)))
+    (is (h/can-add-chii? (h/hand) (t/man 1)))
+    (is (h/can-add-chii? (h/hand :an (t/tiles :man [1 1 1])) (t/man 1)))
+    (is (not (h/can-add-chii? (h/hand :an (t/tiles :man [1 1 1 1])) (t/man 1))))))
+
 (comment
   ;; TODO: REPL to proper tests
   (let [h (h/hand :an (conj (mapv t/man [2 3 4 5 5]) (g/quad (t/man 1)))
