@@ -910,7 +910,7 @@
         yval (if (integer? (val yaku))
                (val yaku)
                (s/capitalize (name (val yaku))))]
-    (str "★ " yname ": " yval (when (integer? (val yaku)) " han"))))
+    (str "★ " yname ": " yval)))
 
 (defn string-of-yakus [yakus lang]
   (let [yakumans (filter #(= :yakuman (val %)) yakus)
