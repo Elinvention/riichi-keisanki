@@ -557,25 +557,40 @@
         (into {} (filter #(= :yakuman (val %)) yakus))
         yakus))))
 
-(defn round-up-to [to number]
+(defn round-up-to-nearest [to number]
   (* to (inc (quot (dec number) to))))
 
 (defn round-nearest [near number]
   (* near (round (/ number near))))
 
-(defn minipoints [{:keys [an min agari bakaze jikaze] :as hand}]
-  (if (chiitoitsu? hand)
-    25
-    (round-up-to
-     10
-     (cond-> (apply + (concat
-                       (map (partial group/fu false) an)
-                       (map (partial group/fu true) min) [20]))
-       (= agari :tsumo) (+ 2)
-       (and (= agari :ron) (closed? hand)) (+ 10)
-       (some (every-pred group/couple?
-                         (partial group/value? bakaze jikaze)) hand) (+ 2)
-       (some #{:kanchan :penchan :tanki} (machi hand)) (+ 2)))))
+(defn has-value-couple? [{:keys [bakaze jikaze] :as hand}] 
+  (true? (some (every-pred group/couple? 
+                    (partial group/value? bakaze jikaze)) (full hand))))
+
+(defn minipoints [{:keys [an min agari] :as hand}]
+  (cond
+    (chiitoitsu? hand) 25
+    (pinfu? hand) (if (= agari :tsumo) 20 30)
+    :else (round-up-to-nearest 10
+       (cond-> (apply + (concat
+                         (map (partial group/fu false) an)
+                         (map (partial group/fu true) min) [20]))
+         (= agari :tsumo) (+ 2)
+         (and (= agari :ron) (closed? hand)) (+ 10)
+         (has-value-couple? hand) (+ 2)
+         (some #{:kanchan :penchan :tanki} (machi hand)) (+ 2)))))
+
+(defn minipoints-step-by-step [{:keys [an min agari] :as hand}]
+  (cond
+    (chiitoitsu? hand) {:chiitoitsu 25}
+    (pinfu? hand) (if (= agari :tsumo) {:pinfu 20} {:pinfu 30})
+    :else (cond-> {:base 20
+                   :an (map (partial group/fu false) an)
+                   :min (map (partial group/fu true) min)}
+            (= agari :tsumo) (assoc :tsumo 2)
+            (and (= agari :ron) (closed? hand)) (assoc :ron 10)
+            (has-value-couple? hand) (assoc :yakuhai-couple 2)
+            (some #{:kanchan :penchan :tanki} (machi hand)) (assoc :machi 2))))
 
 (defn limit-hands [{:keys [yakuman regular]}]
   (if (some? yakuman)
@@ -603,18 +618,18 @@
 
 (defn non-dealer-tsumo [han fu]
   (let [basic (basic-points han fu)
-        dealer-pay (round-up-to 100 (* 2 basic))
-        non-dealer-pay (round-up-to 100 basic)]
+        dealer-pay (round-up-to-nearest 100 (* 2 basic))
+        non-dealer-pay (round-up-to-nearest 100 basic)]
     {:dealer-pay dealer-pay :non-dealer-pay non-dealer-pay}))
 
 (defn dealer-tsumo [han fu]
-  {:everyone-pay (round-up-to 100 (* 2 (basic-points han fu)))})
+  {:everyone-pay (round-up-to-nearest 100 (* 2 (basic-points han fu)))})
 
 (defn dealer-ron [han fu]
-  {:ron-pay (round-up-to 100 (* 6 (basic-points han fu)))})
+  {:ron-pay (round-up-to-nearest 100 (* 6 (basic-points han fu)))})
 
 (defn non-dealer-ron [han fu]
-  {:ron-pay (round-up-to 100 (* 4 (basic-points han fu)))})
+  {:ron-pay (round-up-to-nearest 100 (* 4 (basic-points han fu)))})
 
 (defn total-score [{:keys [ron-pay everyone-pay dealer-pay non-dealer-pay]}]
   (+ ron-pay (* 3 everyone-pay) dealer-pay (* 2 non-dealer-pay)))
@@ -622,7 +637,7 @@
 (defn score [{:keys [jikaze agari] :as hand}]
   (let [yakus (list-yakus hand)
         han (hans yakus)
-        fu (minipoints hand)
+        fu (minipoints-step-by-step hand)
         split-score (match [jikaze agari]
                       [:east   :ron] (dealer-ron han fu)
                       [_       :ron] (non-dealer-ron han fu)
@@ -916,10 +931,14 @@
                         (if (empty? yakumans) yakus yakumans))]
     (s/join "\n" yaku-lines)))
 
+(defn string-of-fu [fu]
+  (str (round-up-to-nearest 10 (->> fu (vals) (flatten) (apply +))) " fu"
+       " (" (s/join " + " (map #(str (second %) (first %)) fu)) ")"))
+
 (defn string-of-value [{:keys [yakuman regular]} fu]
   (cond
     (some? yakuman) (str (case yakuman 1 "", 2 "Double ", 3 "Triple ") "Yakuman")
-    (some? regular) (str regular " han " fu " fu")))
+    (some? regular) (str regular " han " (string-of-fu fu))))
 
 (defn results [hand lang]
   (if (> (space-left hand) 1)

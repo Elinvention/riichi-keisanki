@@ -168,17 +168,30 @@
 
 
 (deftest minipoints-test
+  (testing "has-value-couple?"
+    (is (h/has-value-couple? (h/hand :an [(g/couple (t/dragon :red))])))
+    (is (not (h/has-value-couple? (h/hand :an [(g/couple (t/man 1))])))))
   (testing "minipoints for all"
     (is (= 50 (let [h (h/hand :an [(g/tris (t/dragon :white)) (g/tris (t/wind :east))
-                                      (g/straight (t/pin 7)) (g/straight (t/pin 4))
-                                      (g/couple (t/pin 5))]
-                                 :agari :ron, :jikaze :west)]
+                                   (g/straight (t/pin 7)) (g/straight (t/pin 4))
+                                   (g/couple (t/pin 5))]
+                              :agari :ron, :jikaze :west)]
                 (h/minipoints h))))
 
     (is (= 25 (let [t [(t/pin 2) (t/sou 3) (t/man 4) (t/pin 5)
                        (t/sou 6) (t/pin 7) (t/pin 8)]
                     h (h/hand :an (mapv g/couple t))]
-                (h/minipoints h))))))
+                (h/minipoints h))))
+    
+    (is (= 46 (let [h (h/hand :an [(g/tris (t/dragon :white)) (g/tris (t/wind :east))
+                                   (g/straight (t/pin 7)) (g/straight (t/pin 4))
+                                   (g/couple (t/pin 5))]
+                              :agari :ron, :jikaze :west)]
+                (->> (h/minipoints-step-by-step h)
+                     (vals)
+                     (flatten)
+                     (apply +)))))))
+
 (deftest scoring
   (testing "rounding"
     (is (= 13 (h/round-thousandth 12500)))
