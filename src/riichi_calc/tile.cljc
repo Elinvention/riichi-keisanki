@@ -57,6 +57,11 @@
   (or (dragon? tile)
       (and (wind? tile) (or (= wind-turn value) (= wind-seat value)))))
 
+(defn yakuhai-han [wind-turn wind-seat {:keys [value] :as tile}]
+  (cond (dragon? tile) 1
+        (wind? tile) (+ (if (= wind-turn value) 1 0) (if (= wind-seat value) 1 0))
+        :else 0))
+
 (defn five? [{:keys [value] :as tile}]
   (and (numeral? tile) (= 5 value)))
 

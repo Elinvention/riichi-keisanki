@@ -29,6 +29,19 @@
     (is (h/valid? (h/hand :an (repeat 7 (g/couple (t/pin 1))))))
     (is (h/valid? (h/hand :an (mapv #(g/couple (t/pin %)) (range 1 8)))))
     (is (h/valid? grouped-kokushi)))
+  (testing "yakuhai-han"
+    (let [h (h/hand :an (g/groups :tris [(t/wind :east) (t/man 2)]
+                                    :straight [(t/pin 3) (t/pin 7)]
+                                    :couple [(t/sou 5)]))]
+      (are [han hand] (= han (h/count-yakuhai hand))
+        2 h
+        1 (assoc h :jikaze :west)
+        1 (assoc h :jikaze :south)
+        1 (assoc h :jikaze :north)
+        1 (assoc h :bakaze :west)
+        1 (assoc h :bakaze :south)
+        1 (assoc h :bakaze :north)
+        0 (assoc h :jikaze :west :bakaze :west))))
   (testing "sanshoku-doujin"
     (is (h/sanshoku-doujun? (h/hand :an [(g/straight (t/pin 1)) (g/straight (t/sou 1))
                                                (g/straight (t/man 1))])))

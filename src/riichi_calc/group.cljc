@@ -139,6 +139,9 @@
 (defn value? [wind-turn wind-seat group]
   (tile/value? (first (expand group)) wind-turn wind-seat))
 
+(defn yakuhai-han [wind-turn wind-seat group]
+  (tile/yakuhai-han wind-turn wind-seat (first (expand group))))
+
 (defn redfive? [{:keys [red] :as group}]
   (and red (contains? (set (map :value (expand group))) 5)))
 

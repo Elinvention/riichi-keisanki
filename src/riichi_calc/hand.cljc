@@ -69,9 +69,7 @@
   (update hand :extra-yaku disj yaku (when (= yaku :riichi) :ippatsu)))
 
 (defn count-yakuhai [{:keys [bakaze jikaze] :as hand}]
-  (let [value? (partial group/value? bakaze jikaze)
-        non-couple-value? (every-pred group/non-couple? value?)]
-    (count (filter non-couple-value? (full hand)))))
+  (apply + (map (partial group/yakuhai-han bakaze jikaze) (full hand))))
 
 (defn count-redfive [hand]
   (count (filter group/redfive? (full hand))))
