@@ -352,7 +352,7 @@
                 name (get-in yakudb [(key yaku) :name lang] (s/capitalize (name (key yaku))))]]
       ^{:key (str (key yaku) (val yaku))}
       [:tr [:td (if (nil? wiki) name [:a {:href wiki :target "_blank"} name])] [:td (val yaku)]])
-    [:tr.total [:td "Total"] [:td (hand/string-of-han han fu)]]
+    [:tr.value [:td "Value"] [:td (hand/string-of-value han fu)]]
     [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]])
 
 (defn ukeire-tile [theme tile]

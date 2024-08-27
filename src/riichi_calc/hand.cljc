@@ -632,7 +632,7 @@
            :jikaze jikaze
            :agari agari
            :total (total-score split-score)
-           :han hand
+           :han han
            :fu fu
            :yakus yakus)))
 
@@ -916,7 +916,7 @@
                         (if (empty? yakumans) yakus yakumans))]
     (s/join "\n" yaku-lines)))
 
-(defn string-of-han [{:keys [yakuman regular]} fu]
+(defn string-of-value [{:keys [yakuman regular]} fu]
   (cond
     (some? yakuman) (str (case yakuman 1 "", 2 "Double ", 3 "Triple ") "Yakuman")
     (some? regular) (str regular " han " fu " fu")))
@@ -944,7 +944,7 @@
                   (let [{:keys [han fu] :as score} (score gh)]
                     {:type :winning
                      :summary (str "Winning hand!\nYakus:\n" (string-of-yakus yakus lang)
-                                   "\nPoints: " (string-of-han han fu)
+                                   "\nValue: " (string-of-value han fu)
                                    "\nScore: " (string-of-score score))
                      :yakus yakus :han han :fu fu :score score :agari (:agari gh)})))))))
 
