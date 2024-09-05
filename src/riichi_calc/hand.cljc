@@ -982,15 +982,17 @@
   (str (apply str (map group/to-notation groups))
        (group/seed-to-notation seed)))
 
-(defn to-notation [an-min]
-  (apply str
-         (sort-by #(s/index-of notation-seed-order (last %))
-                  (concat (->> (groups-only an-min)
-                               (group-by :seed)
-                               (map groups-to-notation))
-                          (->> (tiles-only an-min)
-                               (group-by :seed)
-                               (map tiles-to-notation))))))
+(defn to-notation [{:keys [an min]}]
+  (letfn [(partial-to-notation [an-min]
+            (apply str
+                   (sort-by #(s/index-of notation-seed-order (last %))
+                            (concat (->> (groups-only an-min)
+                                         (group-by :seed)
+                                         (map groups-to-notation))
+                                    (->> (tiles-only an-min)
+                                         (group-by :seed)
+                                         (map tiles-to-notation))))))]
+    (str (partial-to-notation an) "|" (partial-to-notation min))))
 
 (defn from-notation [notation]
   (let [groups (s/split notation #"(?<=m|s|p|z)")]

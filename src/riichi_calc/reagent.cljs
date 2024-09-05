@@ -393,13 +393,13 @@
           (hand/grouped-tiles (hand/from-notation notation-min))))
 
 (defn notation-render []
-  (let [notation-an (r/atom "")
-        notation-min (r/atom "")
+  (let [notation (r/atom "")
         typing (r/atom false)]
     (fn []
       (let [{:keys [hand]} @*state
-            hand-an (vec (hand/from-notation @notation-an))
-            hand-min (vec (from-notation-min @notation-min))
+            [notation-an notation-min] (s/split @notation "|")
+            hand-an (vec (hand/from-notation notation-an))
+            hand-min (vec (from-notation-min notation-min))
             changed (or (not= (:an hand) hand-an) (not= (:min hand) hand-min))]
         (when changed
           (if @typing
@@ -409,19 +409,13 @@
                                   (update :hand (fn [h] (assoc h :an hand-an :min hand-min)))
                                   (update :keyboard-mode (partial state/next-keyboard-mode state)))))
               (reset! typing false))
-            (do
-              (reset! notation-an (hand/to-notation (:an hand)))
-              (reset! notation-min (hand/to-notation (:min hand))))))
-        [:fieldset
-         [:legend "Notation"]
-         [:input {:type :text
-                  :name "notation-closed"
-                  :value @notation-an
-                  :onChange #(do (reset! notation-an (.. % -target -value)) (reset! typing true))}]
-         [:input {:type :text
-                  :name "notation-open"
-                  :value @notation-min
-                  :onChange #(do (reset! notation-min (.. % -target -value)) (reset! typing true))}]]))))
+            (reset! notation (hand/to-notation hand)))))
+      [:fieldset
+       [:legend "Notation"]
+       [:input {:type :text
+                :name "notation"
+                :value @notation
+                :onChange #(do (reset! notation (.. % -target -value)) (reset! typing true))}]])))
 
 (defn app-render []
   [:<>
