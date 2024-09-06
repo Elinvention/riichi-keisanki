@@ -992,7 +992,7 @@
                                     (->> (tiles-only an-min)
                                          (group-by :seed)
                                          (map tiles-to-notation))))))]
-    (str (partial-to-notation an) "|" (partial-to-notation min))))
+    (s/join "|" (map partial-to-notation (remove empty? [an min])))))
 
 (defn from-notation [notation]
   (let [groups (s/split notation #"(?<=m|s|p|z)")]
