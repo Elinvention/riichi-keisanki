@@ -164,11 +164,12 @@
   (let [doras (take 5 (lazy-cat dorahyouji (repeat nil)))
         uradoras (take 5 (lazy-cat (drop 5 dorahyouji) (repeat nil)))]
     [:div#dorahyouji [:div "Dorahyouji"]
-     [:div.tile-row (for [[index dora] (map-indexed vector doras)]
-                      ^{:key (str index dora)} [dorahyouji-tile dora index])]
-     (when (contains? extra-yaku :riichi)
-       [:div.tile-row (for [[index dora] (map-indexed vector uradoras)]
-                        ^{:key (str index dora)} [dorahyouji-tile dora index])])]))
+     [:div.flex-column-2px
+      [:div.tile-row (for [[index dora] (map-indexed vector doras)]
+                       ^{:key (str index dora)} [dorahyouji-tile dora index])]
+      (when (contains? extra-yaku :riichi)
+        [:div.tile-row (for [[index dora] (map-indexed vector uradoras)]
+                         ^{:key (str index dora)} [dorahyouji-tile dora index])])]]))
 
 (defn- advance-wind [wind]
   (swap! *state update-in [:hand wind] tile/wind-next))
