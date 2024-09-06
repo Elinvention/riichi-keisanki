@@ -392,6 +392,17 @@
   (filter (some-fn group/tris? group/quad? group/straight?)
           (hand/grouped-tiles (hand/from-notation notation-min))))
 
+(defn cljs-copy-to-clipboard
+  "navigator.clipboard.writeText(text).then(function() {
+    console.log('Async: Copying to clipboard was successful!');
+  }, function(err) {
+    console.error('Async: Could not copy text: ', err);
+  });"
+  [text]
+  (. (js/navigator.clipboard.writeText text) then
+         #(println "Copying to clipboard was successful!")
+         #(println "Could not copy text: " %1)))
+
 (defn notation-render []
   (let [notation (r/atom "")
         typing (r/atom false)]
@@ -415,7 +426,11 @@
        [:input {:type :text
                 :name "notation"
                 :value @notation
-                :onChange #(do (reset! notation (.. % -target -value)) (reset! typing true))}]])))
+                :onChange #(do (reset! notation (.. % -target -value)) (reset! typing true))}]
+       [:input {:type :button
+                :name "notation-copy"
+                :value "Copy"
+                :onClick #(cljs-copy-to-clipboard @notation)}]])))
 
 (defn app-render []
   [:<>
