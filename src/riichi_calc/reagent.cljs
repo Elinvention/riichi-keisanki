@@ -433,7 +433,8 @@
         [:input.button {:type :button
                         :name "notation-copy"
                         :value "Copy"
-                        :onClick #(cljs-copy-to-clipboard @notation)}]]])))
+                        :onClick #(cljs-copy-to-clipboard @notation)
+                        :disabled (empty? @notation)}]]])))
 
 (defn app-render []
   [:<>
