@@ -73,7 +73,7 @@
       (update-in plain-tile [1 :style] assoc :opacity "50%"))))
 
 (defn radio-group [options value on-change]
-  [:<>
+  [:div.radios
     (for [option options]
      ^{:key option} [:label.radio
                      [:input {:type :radio
@@ -83,7 +83,7 @@
                      (s/capitalize (name option))])])
 
 (defn checkboxes [boxes on-change]
-  [:div.control
+  [:div.checkboxes
    (for [box boxes
          :let [bname (get (val box) :name)
                checked (get (val box) :checked)
@@ -213,8 +213,8 @@
   (swap! *state update-in [:wizard :open] not))
 
 (defn buttons []
-  [:div.field
-   [:button.button.is-primary.mr-1 {:on-click wizard-open!} "Wizard"]
+  [:div.field.buttons
+   [:button.button.is-primary {:on-click wizard-open!} "Wizard"]
    [:button.button.is-danger {:on-click #(reset! *state state/initial-state)} "Reset"]])
 
 (defn hand-properties-render []
@@ -346,7 +346,7 @@
 (defn result-win [lang {:keys [yakus han fu score] :as result}]
   (let [actual-lang ({:romaji :ja} lang lang)]
     (speak actual-lang (speech-of-result actual-lang result)))
-  [:table [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
+  [:table.table.is-hoverable [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
    [:tbody
     (for [yaku yakus
           :let [wiki (get-in yakudb [(key yaku) :wiki])
@@ -422,16 +422,18 @@
                                   (update :keyboard-mode (partial state/next-keyboard-mode state)))))
               (reset! typing false))
             (reset! notation (hand/to-notation hand)))))
-      [:fieldset
+      [:fieldset.field.has-addons
        [:legend "Notation"]
-       [:input {:type :text
-                :name "notation"
-                :value @notation
-                :onChange #(do (reset! notation (.. % -target -value)) (reset! typing true))}]
-       [:input {:type :button
-                :name "notation-copy"
-                :value "Copy"
-                :onClick #(cljs-copy-to-clipboard @notation)}]])))
+       [:div.control
+        [:input.input {:type :text
+                       :name "notation"
+                       :value @notation
+                       :onChange #(do (reset! notation (.. % -target -value)) (reset! typing true))}]]
+       [:div.control
+        [:input.button {:type :button
+                        :name "notation-copy"
+                        :value "Copy"
+                        :onClick #(cljs-copy-to-clipboard @notation)}]]])))
 
 (defn app-render []
   [:<>
