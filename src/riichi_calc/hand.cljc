@@ -592,6 +592,17 @@
             (has-value-couple? hand) (assoc :yakuhai-couple 2)
             (some #{:kanchan :penchan :tanki} (machi hand)) (assoc :machi 2))))
 
+(defn final-minipoints [fus]
+  (round-up-to-nearest 10 (->> fus (vals) (flatten) (apply +))))
+
+(defn explain-minipoints [fus]
+  (str (final-minipoints fus) " fu"
+       " (" (s/join " + "
+                    (map (fn [[why amount]]
+                           (str (if (coll? amount) 
+                                  (str (apply + amount) " (" (s/join " + " amount) ")")
+                                  amount) " " (name why))) fus)) ")"))
+
 (defn limit-hands [{:keys [yakuman regular]}]
   (if (some? yakuman)
     (* yakuman 8000)
@@ -931,14 +942,10 @@
                         (if (empty? yakumans) yakus yakumans))]
     (s/join "\n" yaku-lines)))
 
-(defn string-of-fu [fu]
-  (str (round-up-to-nearest 10 (->> fu (vals) (flatten) (apply +))) " fu"
-       " (" (s/join " + " (map #(str (second %) (first %)) fu)) ")"))
-
 (defn string-of-value [{:keys [yakuman regular]} fu]
   (cond
     (some? yakuman) (str (case yakuman 1 "", 2 "Double ", 3 "Triple ") "Yakuman")
-    (some? regular) (str regular " han " (string-of-fu fu))))
+    (some? regular) (str regular " han " (explain-minipoints fu))))
 
 (defn results [hand lang]
   (if (> (space-left hand) 1)
