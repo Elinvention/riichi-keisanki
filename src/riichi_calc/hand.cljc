@@ -648,7 +648,8 @@
 (defn score [{:keys [jikaze agari] :as hand}]
   (let [yakus (list-yakus hand)
         han (hans yakus)
-        fu (minipoints-step-by-step hand)
+        fus (minipoints-step-by-step hand)
+        fu (final-minipoints fus)
         split-score (match [jikaze agari]
                       [:east   :ron] (dealer-ron han fu)
                       [_       :ron] (non-dealer-ron han fu)
@@ -659,7 +660,7 @@
            :agari agari
            :total (total-score split-score)
            :han han
-           :fu fu
+           :fu fus
            :yakus yakus)))
 
 (defn round-thousandth [score]
