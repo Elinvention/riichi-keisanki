@@ -1,7 +1,8 @@
 (ns riichi-calc.reagent
   (:require [clojure.string :as s]
             [reagent.core :as r]
-            [reagent.dom :as rdom]
+            [goog.dom :as gdom]
+            ["react-dom/client" :refer [createRoot]]
             [riichi-calc.group :as group]
             [riichi-calc.hand :as hand]
             [riichi-calc.state :as state]
@@ -446,9 +447,18 @@
    [settings-render]
    [wizard-render]])
 
-(defn ^:export run []
-  (play-tile-down-sfx)
-  (rdom/render [app-render] (js/document.getElementById "interactive"))
-  (rdom/render [results-render] (js/document.getElementById "results")))
+(defonce root-interactive (createRoot (gdom/getElement "interactive")))
+(defonce root-results (createRoot (gdom/getElement "results")))
 
-(run)
+(defn init
+  []
+  (play-tile-down-sfx)
+  (.render root-interactive (r/as-element [app-render]))
+  (.render root-results (r/as-element [results-render])))
+
+(defn ^:dev/after-load re-render
+  []
+  ;; The `:dev/after-load` metadata causes this function to be called
+  ;; after shadow-cljs hot-reloads code.
+  ;; This function is called implicitly by its annotation.
+  (init))
