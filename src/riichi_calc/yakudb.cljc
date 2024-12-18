@@ -1,7 +1,12 @@
 (ns riichi-calc.yakudb)
 
 (def yakudb
-  {:yakuhai {:wiki "https://riichi.wiki/Yakuhai"
+  {:yaku {:wiki "https://riichi.wiki/Yaku"
+          :name {:ja "役"
+                 :romaji "Yaku"
+                 :it "Yaku"
+                 :en "Yaku"}}
+   :yakuhai {:wiki "https://riichi.wiki/Yakuhai"
              :name {:ja "役牌"
                     :romaji "Yakuhai"
                     :it "Valori"

@@ -18,7 +18,8 @@
    :bakaze bakaze             ;; from 場風
    :jikaze jikaze             ;; from 自風
    :dorahyouji dorahyouji     ;; from ドラ表示
-   :extra-yaku extra-yaku})
+   :extra-yaku extra-yaku     ;; from 役
+   :extra {:dora 0 :yaku 0}})
 
 (defn to-string [{:keys [an min]}]
   (if (empty? min)
@@ -530,7 +531,7 @@
    :chinroutou      {:fun chinroutou? :han :yakuman}})
 
 (defn no-yaku? [yakus]
-  (empty? (dissoc yakus :dora :akadora)))
+  (empty? (dissoc yakus :dora :akadora :extra-dora)))
 
 (defn hans [yakus]
   (let [yakuman-count (count (filter #{:yakuman} (vals yakus)))]
@@ -544,7 +545,8 @@
   (let [yaku-han (if (closed? hand) closed-yaku-han opened-yaku-han)]
     (as-> {:yakuhai (count-yakuhai hand)
            :akadora (count-redfive hand)
-           :dora (count-doras hand)} yakus
+           :dora (+ (count-doras hand) (get-in hand [:extra :dora]))
+           :yaku (get-in hand [:extra :yaku])} yakus
       (reduce-kv
        (fn [m k {:keys [fun han]}]
          (cond-> m

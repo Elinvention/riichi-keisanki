@@ -133,6 +133,22 @@
                                     (hand/add-yaku %1 yaku)
                                     (hand/remove-yaku %1 yaku))))]])
 
+(defn handle-extra-doras [event]
+  (let [doras (int (.. event -nativeEvent -data))]
+    (swap! *state assoc-in [:hand :extra :dora] doras)))
+
+(defn handle-extra-yakus [event]
+  (let [yakus (int (.. event -nativeEvent -data))]
+    (swap! *state assoc-in [:hand :extra :yaku] yakus)))
+
+(defn extra-widget [doras yakus]
+  (println "extra-widget" doras yakus)
+  [:fieldset.field.has-addons [:legend "Extras:"]
+   [:div.control [:label {:for "extra-doras"} "Dora:"]
+    [:input#extra-doras.input {:type :number :value doras :step 1 :min 0 :max 20 :on-change handle-extra-doras}]]
+   [:div.control [:label {:for "extra-yakus"} "Yaku:"]
+    [:input#extra-yakus.input {:type :number :value yakus :step 1 :min 0 :max 13 :on-change handle-extra-yakus}]]])
+
 (defn keyboard-widget [theme tiles enabled? update-state-fn]
   (let [key-tiles (for [tile tiles
                         :let [enabled (enabled? tile)]]
@@ -228,7 +244,8 @@
       (agaripai-view (:agaripai hand))
       (dorahyouji-widget hand)]
      [agari-widget (:agari hand)]
-     [extra-yaku-widget (:extra-yaku hand) language]]))
+     [extra-yaku-widget (:extra-yaku hand) language]
+     [extra-widget (get-in hand [:extra :dora]) (get-in hand [:extra :yaku])]]))
 
 
 
