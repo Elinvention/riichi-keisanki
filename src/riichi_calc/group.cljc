@@ -140,7 +140,9 @@
   (tile/value? (first (expand group)) wind-turn wind-seat))
 
 (defn yakuhai-han [wind-turn wind-seat group]
-  (tile/yakuhai-han wind-turn wind-seat (first (expand group))))
+  (if ((some-fn tris? quad?) group)
+    (tile/yakuhai-han wind-turn wind-seat (first (expand group)))
+    0))
 
 (defn redfive? [{:keys [red] :as group}]
   (and red (contains? (set (map :value (expand group))) 5)))
