@@ -565,9 +565,9 @@
 (defn round-nearest [near number]
   (* near (round (/ number near))))
 
-(defn has-value-couple? [{:keys [bakaze jikaze] :as hand}] 
-  (true? (some (every-pred group/couple? 
-                    (partial group/value? bakaze jikaze)) (full hand))))
+(defn has-value-couple? [{:keys [bakaze jikaze] :as hand}]
+  (true? (some (every-pred group/couple?
+                           (partial group/value? bakaze jikaze)) (full hand))))
 
 (defn minipoints [{:keys [an min agari] :as hand}]
   (cond
@@ -945,9 +945,12 @@
                         (if (empty? yakumans) yakus yakumans))]
     (s/join "\n" yaku-lines)))
 
+(def map-tuple-names {1 "Single" 2 "Double" 3 "Triple" 4 "Quadruple"
+                      5 "Quintuple" 6 "Sextuple"})
+
 (defn string-of-value [{:keys [yakuman regular]} fu]
   (cond
-    (some? yakuman) (str (case yakuman 1 "", 2 "Double ", 3 "Triple ") "Yakuman")
+    (some? yakuman) (if (= 1 yakuman) "Yakuman" (s/join " " [(get map-tuple-names yakuman yakuman) "Yakuman"]))
     (some? regular) (str regular " han " (explain-minipoints fu))))
 
 (defn results [hand lang]
