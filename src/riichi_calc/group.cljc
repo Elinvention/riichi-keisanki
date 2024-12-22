@@ -59,8 +59,8 @@
 (defn taatsu? [group]
   (= (:kind group) :taatsu))
 
-(defn to-string [group]
-  (str "[" (apply str (map tile/tile-unicode (expand group))) "]"))
+(defn to-utf16 [group]
+  (str "[" (apply str (map tile/to-utf16 (expand group))) "]"))
 
 (defn seed-to-notation [seed]
   (case seed
@@ -86,14 +86,6 @@
       (vec tiles))
     :else nil))
 
-#?(:clj
-   (defmethod print-method Group [group ^java.io.Writer w]
-     (.write w (to-string group)))
-   :cljs
-   (extend-protocol IPrintWithWriter
-     Group
-     (-pr-writer [group w _]
-       (write-all w (to-string group)))))
 
 (defn non-couple? [group]
   ((some-fn straight? tris? quad?) group))

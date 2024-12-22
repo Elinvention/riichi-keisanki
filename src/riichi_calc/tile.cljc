@@ -248,25 +248,13 @@
 (def utf16-sou 0xDC10)
 (def utf16-pin 0xDC19)
 
-(defn tile-unicode [{:keys [seed value red]}]
+(defn to-utf16 [{:keys [seed value red]}]
   (case seed
     :man (str utf16-prefix (char (+ (dec value) utf16-man)) (when red "*"))
     :sou (str utf16-prefix (char (+ (dec value) utf16-sou)) (when red "*"))
     :pin (str utf16-prefix (char (+ (dec value) utf16-pin)) (when red "*"))
     :wind (str utf16-prefix (char (+ (.indexOf winds value) utf16-ton)))
     :dragon (str utf16-prefix (char (+ 4 (.indexOf (reverse dragons) value) utf16-ton)))))
-(comment
-  (tile-unicode (dragon :white))
-  (tile-unicode (dragon :green))
-  (tile-unicode (dragon :red))
-  )
-
-#?(:clj (defmethod print-method Tile [tile ^java.io.Writer w]
-          (.write w (tile-unicode tile)))
-   :cljs (extend-protocol IPrintWithWriter
-           Tile
-           (-pr-writer [tile w _]
-             (write-all w (tile-unicode tile)))))
 
 (def wind-tiles
   (for [seed [:wind] value [:east :south :west :north]]
