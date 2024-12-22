@@ -1,18 +1,31 @@
 (ns riichi-calc.reagent
-  (:require [clojure.string :as s]
-            [reagent.core :as r]
-            [goog.dom :as gdom]
-            ["react-dom/client" :refer [createRoot]]
-            [riichi-calc.group :as group]
-            [riichi-calc.hand :as hand]
-            [riichi-calc.state :as state]
-            [riichi-calc.tile :as tile]
-            [riichi-calc.yakudb :refer [yakudb]]
-            [goog.string :as gstring]))
+  (:require
+   ["react-dom/client" :refer [createRoot]]
+   [cljs.reader :as reader]
+   [clojure.string :as s]
+   [goog.dom :as gdom]
+   [goog.string :as gstring]
+   [reagent.core :as r]
+   [riichi-calc.group :as group]
+   [riichi-calc.hand :as hand]
+   [riichi-calc.state :as state]
+   [riichi-calc.tile :as tile]
+   [riichi-calc.yakudb :refer [yakudb]]))
 
 ;(enable-console-print!)
 
+(defn reader-read-tile [{:keys [seed value red]}]
+  (tile/->Tile seed value red))
+
+(reader/register-tag-parser! 'riichi-calc.tile.Tile reader-read-tile)
+
+(defn load-history []
+  (->> "history"
+      (js/window.localStorage.getItem)
+      (reader/read-string)))
+
 (defonce *state (r/atom state/initial-state))
+(defonce *history (r/atom []))
 
 (def tile-width 48)
 (def tile-height 64)
@@ -101,7 +114,7 @@
       " " (s/capitalize bname)])])
 
 (defn settings-render []
-  [:div#settings
+  [:div#settings.field
    [:fieldset.field [:legend "Theme"]
     [radio-group [:regular :black] (:theme @*state) #(swap! *state assoc :theme %)]]
    [:fieldset.field [:legend "Yaku Names Language"]
@@ -163,9 +176,9 @@
         enabled? (partial state/can-input? keyboard-mode hand)]
     [keyboard-widget theme tile/all-34-tiles-with-redfives enabled? keyboard-input]))
 
-(defn hand-tile [tile path pos svg-tile-fn dora]
+(defn hand-tile [svg-tile-fn tile on-click path pos dora]
   (cond-> (svg-tile-fn (:theme @*state) tile)
-    true (assoc-in [1 :on-click] #(remove-from-hand path pos))
+    (fn? on-click) (assoc-in [1 :on-click] #(on-click path pos))
     dora (assoc-in [1 :class] "dora")))
 
 (defn agaripai-view [tile]
@@ -195,30 +208,29 @@
   [:div.tile-button [:div (s/capitalize (name kind))]
    (assoc-in (svg-tile theme wind) [1 :on-click] #(advance-wind kind))])
 
-(defn- hand-an-render [{:keys [an] :as hand}]
+(defn- hand-an-render [{:keys [an] :as hand} on-click]
   (reduce
    (fn [val [i group-or-tile]]
      (if (group/group? group-or-tile)
        (concat val
                (for [[j tile] (map-indexed vector (group/expand group-or-tile))]
                  ^{:key (str "an" tile i j)}
-                 [hand-tile (when (< 0 j 3) tile) :an i svg-tile (hand/dora? hand tile)]))
+                 [hand-tile svg-tile (when (< 0 j 3) tile) on-click :an i (hand/dora? hand tile)]))
        (conj val
              ^{:key (str "an" group-or-tile i)}
-             [hand-tile group-or-tile :an i svg-tile (hand/dora? hand group-or-tile)])))
+             [hand-tile svg-tile group-or-tile on-click :an i (hand/dora? hand group-or-tile)])))
    []
    (map-indexed vector an)))
 
-(defn- hand-min-render [{:keys [min] :as hand}]
+(defn- hand-min-render [{:keys [min] :as hand} on-click]
   (for [[index group] (map-indexed vector min)
         [i tile] (map-indexed vector (group/expand group))]
         ;;{:fx/type min-view :tile tile :index index :rotate (if (= i 0) 90 0) :theme theme}
     ^{:key (str "min" tile index i)}
-    [hand-tile tile :min index (if (= i 0) svg-tile-rotated svg-tile) (hand/dora? hand tile)]))
+    [hand-tile (if (= i 0) svg-tile-rotated svg-tile) tile on-click :min index (hand/dora? hand tile)]))
 
-(defn hand-render []
-  (let [{:keys [hand]} @*state]
-    [:div.hand (concat (hand-an-render hand) (hand-min-render hand))]))
+(defn hand-render [hand on-click]
+  [:div.hand (concat (hand-an-render hand on-click) (hand-min-render hand on-click))])
 
 (defn wizard-close! []
   (swap! *state assoc-in [:wizard :open] false))
@@ -229,10 +241,15 @@
 (defn wizard-toggle! []
   (swap! *state update-in [:wizard :open] not))
 
+(defn new-hand! []
+  (let [{:keys [hand]} @*state]
+    (swap! *history conj hand)
+    (reset! *state state/initial-state)))
+
 (defn buttons []
   [:div.field.buttons
-   [:button.button.is-primary {:on-click wizard-open!} "Wizard"]
-   [:button.button.is-danger {:on-click #(reset! *state state/initial-state)} "Reset"]])
+   [:button.button.is-info {:on-click wizard-open!} "Wizard"]
+   [:button.button.is-primary {:on-click new-hand!} "New hand"]])
 
 (defn hand-properties-render []
   (let [{:keys [hand theme language]} @*state]
@@ -319,8 +336,8 @@
           1 [:div [:p "Please choose jikaze"] [wizard-wind-keyboard theme :jikaze]]
           2 [:div [:p "Please choose bakaze"] [wizard-wind-keyboard theme :bakaze]]
           3 [:div [:p "Please choose dorahyouji"] [dorahyouji-keyboard theme hand] [dorahyouji-widget hand]]
-          4 [:div [:p "Please enter closed hand"] [wizard-closed-hand-keyboard theme] [hand-render]]
-          5 [:div [:p "Please enter open hand"] [wizard-open-hand-keyboard theme hand] [hand-render]]
+          4 [:div [:p "Please enter closed hand"] [wizard-closed-hand-keyboard theme] [hand-render hand remove-from-hand]]
+          5 [:div [:p "Please enter open hand"] [wizard-open-hand-keyboard theme hand] [hand-render hand remove-from-hand]]
           6 [:div [:p "Please enter agaripai"] [wizard-agaripai-keyboard theme hand] [agaripai-view (:agaripai hand)]]
           (swap! *state assoc-in [:wizard :step] 1))]
        [wizard-nav (:step wizard)]]]
@@ -454,24 +471,48 @@
                         :onClick #(cljs-copy-to-clipboard @notation)
                         :disabled (empty? @notation)}]]])))
 
+(defn restore-hand! [hand]
+  (swap! *state assoc :hand hand))
+
+(defn forget! [i]
+  (swap! *history (partial keep-indexed #(when (not= %1 i) %2))))
+
+(defn history-render []
+  (let [history (take 10 @*history)
+        history-str (pr-str history)]
+    (println "Saving history to localStorage as " history-str)
+    (js/window.localStorage.setItem "history" history-str)
+    [:div.field.content
+     [:button.button.is-danger {:on-click #(reset! *history [])} "Clear History"]
+     [:ol
+      (for [[i hand] (map-indexed vector history)]
+        ^{:key (str "history" i hand)}
+        [:li [hand-render hand #(restore-hand! hand)]
+         [:div.field.has-addons
+          [:div.control [:button.button.is-link {:on-click #(restore-hand! hand)} "Restore"]]
+          [:div.control [:button.button.is-danger {:on-click #(forget! i)} "Forget"]]]])]]))
+
 (defn app-render []
   [:<>
    [hand-properties-render]
    [keyboard-render]
    [keyboard-mode-render]
-   [hand-render]
+   [hand-render (:hand @*state) remove-from-hand]
    [notation-render]
    [settings-render]
    [wizard-render]])
 
 (defonce root-interactive (createRoot (gdom/getElement "interactive")))
 (defonce root-results (createRoot (gdom/getElement "results")))
+(defonce root-history (createRoot (gdom/getElement "history")))
 
 (defn init
   []
   (play-tile-down-sfx)
+  (reset! *history (load-history))
   (.render root-interactive (r/as-element [app-render]))
-  (.render root-results (r/as-element [results-render])))
+  (.render root-results (r/as-element [results-render]))
+  (.render root-history (r/as-element [history-render])))
 
 (defn ^:dev/after-load re-render
   []
