@@ -19,10 +19,41 @@
 
 (reader/register-tag-parser! 'riichi-calc.tile.Tile reader-read-tile)
 
-(defn load-history []
-  (->> "history"
-      (js/window.localStorage.getItem)
-      (reader/read-string)))
+(def ^:private history-serialization-version 1)
+
+(def ^:private initial-history 
+  {:version history-serialization-version
+   :hands []})
+
+(defn ^:private parse-history-string [history-str]
+  (try
+    (reader/read-string history-str)
+    (catch :default e
+      (js/console.error "Error parsing history from local storage:" e)
+      nil)))
+
+(defn load-history
+  "Loads history from local storage, handling parsing errors and versioning.
+   Returns initial-history if no history is found, or if the stored history
+   is unparseable or from a future version."
+  []
+  (if-let [stored-history-str (js/window.localStorage.getItem "history")]
+    (if-let [parsed-history (parse-history-string stored-history-str)]
+      (if-let [version (:version parsed-history)]
+        (if (<= version history-serialization-version)
+          parsed-history
+          (do
+            (js/console.warn "Stored history version is newer than expected. Using initial history.")
+            initial-history))
+        (do
+          (js/console.warn "Stored history is missing version information. Using initial history.")
+          initial-history))
+      (do
+        (js/console.warn "Failed to parse stored history. Using initial history.")
+        initial-history))
+    (do
+      (js/console.info "No history found in local storage. Using initial history.")
+      initial-history)))
 
 (defonce *state (r/atom state/initial-state))
 (defonce *history (r/atom []))
@@ -243,7 +274,7 @@
 
 (defn new-hand! []
   (let [{:keys [hand]} @*state]
-    (swap! *history conj hand)
+    (swap! *history update :hands conj hand)
     (reset! *state state/initial-state)))
 
 (defn buttons []
@@ -475,17 +506,20 @@
   (swap! *state assoc :hand hand))
 
 (defn forget! [i]
-  (swap! *history (partial keep-indexed #(when (not= %1 i) %2))))
+  (swap! *history (fn [history]
+                    (update history :hands
+                            (partial keep-indexed #(when (not= %1 i) %2))))))
 
 (defn history-render []
-  (let [history (take 10 @*history)
+  (let [hands (take 10 (:hands @*history))
+        history {:version history-serialization-version :hands hands}
         history-str (pr-str history)]
     (println "Saving history to localStorage as " history-str)
     (js/window.localStorage.setItem "history" history-str)
     [:div.field.content
      [:button.button.is-danger {:on-click #(reset! *history [])} "Clear History"]
      [:ol
-      (for [[i hand] (map-indexed vector history)]
+      (for [[i hand] (map-indexed vector hands)]
         ^{:key (str "history" i hand)}
         [:li [hand-render hand #(restore-hand! hand)]
          [:div.field.has-addons
