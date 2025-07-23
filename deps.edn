@@ -8,5 +8,5 @@
   cljsjs/react {:mvn/version "18.2.0-1"}
   cljsjs/react-dom {:mvn/version "18.2.0-1"}}
  :aliases {:test {:extra-paths ["test"]}
-           :main {:exec-fn riichi-calc.fx/-main}
+           :main {:exec-fn riichi-calc.ui.fx.main/-main}
            :cljs {:extra-deps {thheller/shadow-cljs {:mvn/version "2.28.14"}}}}}

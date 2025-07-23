@@ -1,4 +1,4 @@
-(ns riichi-calc.fx
+(ns riichi-calc.ui.fx.main
   (:gen-class)
   (:require [cljfx.api :as fx]
             [clojure.string :refer [capitalize]]
@@ -303,9 +303,7 @@ Chankan 搶槓 win with a tile stolen from an opponent's kan"}]})
                                         :results (hand/results hand language)}
                                        glossary]}}}})
 
-(def update-hand (partial state/update-hand-with-sfx #(println "TODO: play a sound!")))
-
-(def keyboard-input (partial state/keyboard-input update-hand))
+(def keyboard-input (partial state/keyboard-input state/update-hand))
 
 (defn map-event-handler [event]
   (case (:event/type event)

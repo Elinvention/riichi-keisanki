@@ -4,18 +4,16 @@
             [riichi-calc.hand :as hand]
             [riichi-calc.tile :as tile]))
 
-(def initial-state {:hand (hand/hand)
-                    :keyboard-mode :an 
-                    :theme :regular
-                    :language :romaji
-                    :wizard {:step 1 :open false}})
+(defprotocol MutableRiichiState
+  "Modify a State"
+  (update-hand [this path f tile]))
 
-; TODO
-(def play-sfx (atom nil))
+(defrecord CommonState [hand keyboard-mode theme language]
+  MutableRiichiState
+  (update-hand [this path f tile]
+    (update-in this [:hand path] f tile)))
 
-(defn update-hand-with-sfx [play-sfx-fn state path f tile]
-  (play-sfx-fn)
-  (update-in state [:hand path] f tile))
+(def initial-state (->CommonState (hand/hand) :an :regular :romaji))
 
 (defn can-input? [keyboard-mode hand tile]
   (case keyboard-mode
@@ -27,40 +25,40 @@
     :dorahyouji (hand/can-add-dorahyouji? hand tile)
     :agaripai (hand/can-agaripai? hand tile)))
 
-(defn an-conj [update-fn {:keys [hand] :as state} tile]
+(defn an-conj [{:keys [hand] :as state} tile]
   (if (hand/can-add-tile? hand tile)
-    (update-fn state :an tile/conj-sort-tile tile)
+    (update-hand state :an tile/conj-sort-tile tile)
     state))
 
-(defn chii-conj [update-fn {:keys [hand] :as state} tile]
+(defn chii-conj [{:keys [hand] :as state} tile]
   (if (hand/can-add-chii? hand tile)
-    (update-fn state :min tile/conj-sort-tile (group/straight tile))
+    (update-hand state :min tile/conj-sort-tile (group/straight tile))
     state))
 
-(defn pon-conj [update-fn {:keys [hand] :as state} tile]
+(defn pon-conj [{:keys [hand] :as state} tile]
   (if (hand/can-add-pon? hand tile)
-    (update-fn state :min tile/conj-sort-tile (group/tris tile))
+    (update-hand state :min tile/conj-sort-tile (group/tris tile))
     state))
 
-(defn kan-conj [update-fn {:keys [hand] :as state} tile]
+(defn kan-conj [{:keys [hand] :as state} tile]
   (if (hand/can-add-kan? hand tile)
-    (update-fn state :min tile/conj-sort-tile (group/quad tile))
+    (update-hand state :min tile/conj-sort-tile (group/quad tile))
     state))
 
-(defn ankan-conj [update-fn {:keys [hand] :as state} tile]
+(defn ankan-conj [{:keys [hand] :as state} tile]
   (if (hand/can-add-kan? hand tile)
-    (update-fn state :an tile/conj-sort-tile (group/quad tile))
+    (update-hand state :an tile/conj-sort-tile (group/quad tile))
     state))
 
 
-(defn dorahyouji-conj [update-fn {:keys [hand] :as state} tile]
+(defn dorahyouji-conj [{:keys [hand] :as state} tile]
   (if (hand/can-add-dorahyouji? hand tile)
-    (update-fn state :dorahyouji conj tile)
+    (update-hand state :dorahyouji conj tile)
     state))
 
 (defn add-agaripai [state tile]
   (-> state
-   (update-in [:hand :an] tile/conj-sort-tile tile)
+   (update-hand :an tile/conj-sort-tile tile)
    (assoc-in [:hand :agaripai] tile)))
 
 (defn set-agaripai [{:keys [hand] :as state} tile]
@@ -78,15 +76,15 @@
       [(_ :guard #(< % 3)) _ (:or :chii :pon :kan :ankan)] :an
       :else keyboard-mode)))
 
-(defn keyboard-input [update-fn {:keys [keyboard-mode] :as state} tile]
+(defn keyboard-input [{:keys [keyboard-mode] :as state} tile]
   (as-> state new-state
     (case keyboard-mode
-      :an (an-conj update-fn state tile)
-      :chii (chii-conj update-fn state tile)
-      :pon (pon-conj update-fn state tile)
-      :kan (kan-conj update-fn state tile)
-      :ankan (ankan-conj update-fn state tile)
-      :dorahyouji (dorahyouji-conj update-fn state tile)
+      :an (an-conj state tile)
+      :chii (chii-conj state tile)
+      :pon (pon-conj state tile)
+      :kan (kan-conj state tile)
+      :ankan (ankan-conj state tile)
+      :dorahyouji (dorahyouji-conj state tile)
       :agaripai (set-agaripai state tile)
       :else new-state)
     (update new-state :keyboard-mode (partial next-keyboard-mode new-state))))
