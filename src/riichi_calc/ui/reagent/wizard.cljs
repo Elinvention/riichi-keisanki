@@ -19,15 +19,26 @@
 (defn toggle! []
   (swap! *wizard update :open not))
 
-(defn ^:private steps [current-step {:keys [theme hand]}]
+(def ^:private steps
+  [{:icon #(svg/tile-fg %1 (tile/wind (:jikaze %2))) :title "Jikaze"}
+   {:icon #(svg/tile-fg %1 (tile/wind (:bakaze %2))) :title "Bakaze"}
+   {:icon nil :title "Dora&shy;hyouji"}
+   {:icon nil :title "Concealed tiles"}
+   {:icon nil :title "Pon"}
+   {:icon nil :title "Chii"}
+   {:icon nil :title "Kan"}
+   {:icon nil :title "AnKan"}
+   {:icon nil :title "Agari"}])
+
+(defn ^:private instance-step [theme hand step]
+  (-> step
+      (update :icon #(when % (% theme hand)))
+      (update :title gstring/unescapeEntities)))
+
+(defn ^:private render-steps [current-step {:keys [theme hand]}]
   [:ul.steps.has-content-centered.is-horizontal
-   (let [steps [{:icon (svg/tile-fg theme (tile/wind (:jikaze hand))) :title "Jikaze"}
-                {:icon (svg/tile-fg theme (tile/wind (:bakaze hand))) :title "Bakaze"}
-                {:icon nil :title (gstring/unescapeEntities "Dora&shy;hyouji")}
-                {:icon nil :title "Closed hand"}
-                {:icon nil :title "Open hand"}
-                {:icon nil :title "Agari"}]
-         steps-indexed (map-indexed vector steps)]
+   (let [steps-instanced (map (partial instance-step theme hand) steps)
+         steps-indexed (map-indexed vector steps-instanced)]
      (for [[step {:keys [icon title]}] steps-indexed]
        ^{:key step}
        [:li.steps-segment {:class (when (= (inc step) current-step) "is-active")}
@@ -38,7 +49,7 @@
   (swap! *wizard update :step (comp (partial max 1) dec)))
 
 (defn ^:private step-next! []
-  (swap! *wizard update :step (comp (partial min 6) inc)))
+  (swap! *wizard update :step (comp (partial min (count steps)) inc)))
 
 (defn ^:private agari! [agari *state]
   (swap! *state assoc-in [:hand :agari] agari))
@@ -47,10 +58,10 @@
 
 (def ^:private tsumo! (partial agari! :tsumo))
 
-(defn ^:private nav [*state step]
+(defn ^:private render-nav [*state step]
   [:div.card-footer
    (when (> step 1) [:button.card-footer-item.button {:on-click step-prev!} "Previous step"])
-   (if (< step 6)
+   (if (< step (count steps))
      [:button.card-footer-item.button.is-primary
       {:on-click step-next!} "Next step"]
      [:<>
@@ -61,15 +72,27 @@
 
 (defn ^:private wind-keyboard [*state theme kaze]
   [widget/keyboard *state theme tile/wind-tiles (constantly true)
-   #(swap! %1 assoc-in [:hand kaze] (:value %2))])
+   #(do (swap! %1 assoc-in [:hand kaze] (:value %2)) (step-next!))])
 
 (defn ^:private agaripai-keyboard [*state theme hand]
   [widget/keyboard *state theme tile/all-34-tiles-with-redfives
    (partial hand/can-agaripai? hand) state/set-agaripai!])
 
-(defn ^:private open-hand-keyboard [*state theme hand]
+(defn ^:private pon-keyboard [*state theme hand]
   [widget/keyboard *state theme tile/all-34-tiles-with-redfives
    (partial hand/can-add-pon? hand) state/pon-conj!])
+
+(defn ^:private chii-keyboard [*state theme hand]
+  [widget/keyboard *state theme tile/all-34-tiles-with-redfives
+   (partial hand/can-add-chii? hand) state/chii-conj!])
+
+(defn ^:private ankan-keyboard [*state theme hand]
+  [widget/keyboard *state theme tile/all-34-tiles-with-redfives
+   (partial hand/can-add-kan? hand) state/ankan-conj!])
+
+(defn ^:private kan-keyboard [*state theme hand]
+  [widget/keyboard *state theme tile/all-34-tiles-with-redfives
+   (partial hand/can-add-kan? hand) state/kan-conj!])
 
 (defn ^:private closed-hand-keyboard [*state theme hand]
   [widget/keyboard *state theme tile/all-34-tiles-with-redfives
@@ -80,33 +103,43 @@
    (partial hand/can-add-dorahyouji? hand) state/dorahyouji-conj!])
 
 (defn render [*state]
-  (let [{:keys [hand theme]} @*state]
+  (let [{:keys [hand theme]} @*state
+        remove-from-hand (partial state/remove-from-hand! *state)]
     [(if (:open @*wizard) :div#wizard.modal.is-active :div#wizard.modal)
      [:div.modal-background {:on-click #(swap! *state assoc-in [:wizard :open] false)}]
      [:div.modal-content
       [:div.card
        [:div.card-header [:p.card-header-title "Wizard"]]
        [:div.card-content
-        [steps (:step @*wizard) @*state]]
+        [render-steps (:step @*wizard) @*state]]
        [:div.block.has-text-centered
         (case (:step @*wizard)
-          1 [:div [:p "Please choose jikaze"] 
+          1 [:div [:p "Please choose jikaze (sit wind)"] 
              [wind-keyboard *state theme :jikaze]]
-          2 [:div [:p "Please choose bakaze"]
+          2 [:div [:p "Please choose bakaze (turn wind)"]
              [wind-keyboard *state theme :bakaze]]
-          3 [:div [:p "Please choose dorahyouji"]
+          3 [:div [:p "Please choose dorahyouji (dora indicator)"]
              [dorahyouji-keyboard *state theme hand]
              [widget/dorahyouji *state hand]]
-          4 [:div [:p "Please enter closed hand"]
+          4 [:div [:p "Please enter concealed tiles (anpai)"]
              [closed-hand-keyboard *state theme hand]
-             [widget/hand-render theme hand (partial state/remove-from-hand! *state)]]
-          5 [:div [:p "Please enter open hand"]
-             [open-hand-keyboard *state theme hand]
-             [widget/hand-render theme hand (partial state/remove-from-hand! *state)]]
-          6 [:div [:p "Please enter agaripai"]
+             [widget/hand-render theme hand remove-from-hand]]
+          5 [:div [:p "Please enter pon"]
+             [pon-keyboard *state theme hand]
+             [widget/hand-render theme hand remove-from-hand]]
+          6 [:div [:p "Please enter chii"]
+             [chii-keyboard *state theme hand]
+             [widget/hand-render theme hand remove-from-hand]]
+          7 [:div [:p "Please enter kan"]
+             [ankan-keyboard *state theme hand]
+             [widget/hand-render theme hand remove-from-hand]]
+          8 [:div [:p "Please enter concealed kan (ankan)"]
+             [kan-keyboard *state theme hand]
+             [widget/hand-render theme hand remove-from-hand]]
+          9 [:div [:p "Please enter agaripai"]
              [agaripai-keyboard *state theme hand]
              [widget/agaripai-view *state (:agaripai hand)]]
           (swap! *state assoc-in [:wizard :step] 1))]
-       [nav *state (:step @*wizard)]]]
+       [render-nav *state (:step @*wizard)]]]
      [:button.modal-close.is-large {:aria-label "close"
                                     :on-click close!}]]))

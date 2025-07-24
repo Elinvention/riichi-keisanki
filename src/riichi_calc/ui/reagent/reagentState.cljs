@@ -20,6 +20,15 @@
 (defn pon-conj! [*state tile]
   (swap! *state state/pon-conj tile))
 
+(defn chii-conj! [*state tile]
+  (swap! *state state/chii-conj tile))
+
+(defn kan-conj! [*state tile]
+  (swap! *state state/kan-conj tile))
+
+(defn ankan-conj! [*state tile]
+  (swap! *state state/ankan-conj tile))
+
 (defn an-conj! [*state tile]
   (swap! *state state/an-conj tile))
 
