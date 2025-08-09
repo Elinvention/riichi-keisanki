@@ -15,7 +15,7 @@
 
 (reader/register-tag-parser! 'riichi-calc.tile.Tile reader-read-tile)
 
-(defonce *history (r/atom []))
+(defonce *history (r/atom initial-history))
 
 (defn ^:private parse-history-string [history-str]
   (try
@@ -47,27 +47,40 @@
       (js/console.info "No history found in local storage. Using initial history.")
       initial-history)))
 
+(defn ^:private save-to-localStorage! [history]
+  (try
+    (let [hands (take 10 (:hands history))
+          history-to-save {:version history-serialization-version :hands hands}
+          history-str (pr-str history-to-save)]
+      (js/window.localStorage.setItem "history" history-str))
+    (catch :default e
+      (js/console.error "Failed to save history to localStorage:" e))))
+
+;; Auto-save to localStorage whenever history changes
+(add-watch *history :localStorage-sync
+           (fn [_key _atom _old-state new-state]
+             (save-to-localStorage! new-state)))
+
 (defn save-hand! [hand]
   (swap! *history update :hands conj hand))
 
 (defn forget-hand! [i]
-  (swap! *history (fn [history]
-                    (update history :hands
-                            (partial keep-indexed #(when (not= %1 i) %2))))))
+  (swap! *history update :hands
+         (fn [hands]
+           (vec (concat (take i hands) (drop (inc i) hands))))))
+
+(defn clear-history! []
+  (reset! *history initial-history))
 
 (defn render [theme hand-render restore-hand!]
-  (let [hands (take 10 (:hands @*history))
-        history {:version history-serialization-version :hands hands}
-        history-str (pr-str history)]
-    (println "Saving history to localStorage as " history-str)
-    (js/window.localStorage.setItem "history" history-str)
+  (let [hands (:hands @*history)]
     [:div.field.content
      (if (empty? hands)
        [:div.notification.is-warning "History is empty."]
        [:<>
-        [:button.button.is-danger {:on-click #(reset! *history [])} "Clear History"]
-        [:ol (for [[i hand] (map-indexed vector hands)]
-               ^{:key (str "history" i hand)}
+        [:button.button.is-danger {:on-click clear-history!} "Clear History"]
+        [:ol (for [[i hand] (map-indexed vector (take 10 hands))]
+               ^{:key (str "history-" i "-" (hash hand))}
                [:li [hand-render theme hand #(restore-hand! hand)]
                 [:div.field.has-addons
                  [:div.control [:button.button.is-link {:on-click #(restore-hand! hand)} "Restore"]]
