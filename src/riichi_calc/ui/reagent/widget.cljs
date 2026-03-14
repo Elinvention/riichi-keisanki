@@ -4,7 +4,8 @@
    [riichi-calc.hand :as hand]
    [riichi-calc.group :as group]
    [riichi-calc.yakudb :refer [yakudb]]
-   [riichi-calc.ui.reagent.svg :as svg]))
+   [riichi-calc.ui.reagent.svg :as svg]
+   [riichi-calc.state :as state]))
 
 (defn radio-group [options value on-change]
   [:div.radios
@@ -73,21 +74,23 @@
                                     (hand/add-yaku %1 yaku)
                                     (hand/remove-yaku %1 yaku))))]])
 
-(defn ^:private handle-extra-doras [event *state]
+(defn ^:private handle-extra-doras [*state event]
   (let [doras (int (.. event -nativeEvent -data))]
-    (swap! *state assoc-in [:hand :extra :dora] doras)))
+    (state/set-extra-dora! *state doras)))
 
-(defn ^:private handle-extra-yakus [event *state]
+(defn ^:private handle-extra-yakus [*state event]
   (let [yakus (int (.. event -nativeEvent -data))]
-    (swap! *state assoc-in [:hand :extra :yaku] yakus)))
+    (state/set-extra-yaku! *state yakus)))
 
-(defn extra [doras yakus]
+(defn extra [*state doras yakus]
   (println "extra-widget" doras yakus)
   [:fieldset.field.has-addons [:legend "Extras:"]
    [:div.control [:label {:for "extra-doras"} "Dora:"]
-    [:input#extra-doras.input {:type :number :value doras :step 1 :min 0 :max 20 :on-change handle-extra-doras}]]
+    [:input#extra-doras.input {:type :number :value doras :step 1 :min 0 :max 20
+                               :on-change (partial handle-extra-doras *state)}]]
    [:div.control [:label {:for "extra-yakus"} "Yaku:"]
-    [:input#extra-yakus.input {:type :number :value yakus :step 1 :min 0 :max 13 :on-change handle-extra-yakus}]]])
+    [:input#extra-yakus.input {:type :number :value yakus :step 1 :min 0 :max 13
+                               :on-change (partial handle-extra-yakus *state)}]]])
 
 (defn dorahyouji-tile [*state tile index]
   (cond-> (svg/tile (:theme @*state) tile)

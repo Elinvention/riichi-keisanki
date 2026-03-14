@@ -66,7 +66,7 @@
       (widget/dorahyouji *state hand)]
      [widget/agari *state (:agari hand)]
      [widget/extra-yaku *state (:extra-yaku hand) language]
-     [widget/extra (get-in hand [:extra :dora]) (get-in hand [:extra :yaku])]]))
+     [widget/extra *state (get-in hand [:extra :dora]) (get-in hand [:extra :yaku])]]))
 
 (defn speech-of-result [lang {:keys [yakus score]}]
   (str

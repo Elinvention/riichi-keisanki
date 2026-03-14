@@ -88,3 +88,9 @@
       :agaripai (set-agaripai state tile)
       :else new-state)
     (update new-state :keyboard-mode (partial next-keyboard-mode new-state))))
+
+(defn set-extra-dora! [*state dora]
+  (swap! *state assoc-in [:hand :extra :dora] dora))
+
+(defn set-extra-yaku! [*state yaku]
+  (swap! *state assoc-in [:hand :extra :yaku] yaku))
