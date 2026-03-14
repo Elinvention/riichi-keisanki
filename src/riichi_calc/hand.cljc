@@ -569,19 +569,6 @@
   (true? (some (every-pred group/couple?
                            (partial group/value? bakaze jikaze)) (full hand))))
 
-(defn minipoints [{:keys [an min agari] :as hand}]
-  (cond
-    (chiitoitsu? hand) 25
-    (pinfu? hand) (if (= agari :tsumo) 20 30)
-    :else (round-up-to-nearest 10
-       (cond-> (apply + (concat
-                         (map (partial group/fu false) an)
-                         (map (partial group/fu true) min) [20]))
-         (= agari :tsumo) (+ 2)
-         (and (= agari :ron) (closed? hand)) (+ 10)
-         (has-value-couple? hand) (+ 2)
-         (some #{:kanchan :penchan :tanki} (machi hand)) (+ 2)))))
-
 (defn minipoints-step-by-step [{:keys [an min agari] :as hand}]
   (cond
     (chiitoitsu? hand) {:chiitoitsu 25}
@@ -596,6 +583,8 @@
 
 (defn final-minipoints [fus]
   (round-up-to-nearest 10 (->> fus (vals) (flatten) (apply +))))
+
+(def minipoints (comp final-minipoints minipoints-step-by-step))
 
 (defn explain-minipoints [fus]
   (str (final-minipoints fus) " fu"
@@ -630,40 +619,100 @@
           (limit-hands han)))))
 
 (defn non-dealer-tsumo [han fu]
-  (let [basic (basic-points han fu)
-        dealer-pay (round-up-to-nearest 100 (* 2 basic))
-        non-dealer-pay (round-up-to-nearest 100 basic)]
-    {:dealer-pay dealer-pay :non-dealer-pay non-dealer-pay}))
+  ; tsumo with 25 fu and 1 or 2 han is impossible
+  (when (not (and (= fu 25) (< (:regular han) 3)))
+    (let [basic (basic-points han fu)
+          dealer-pay (round-up-to-nearest 100 (* 2 basic))
+          non-dealer-pay (round-up-to-nearest 100 basic)]
+      {:dealer-pay dealer-pay :non-dealer-pay non-dealer-pay})))
 
 (defn dealer-tsumo [han fu]
-  {:everyone-pay (round-up-to-nearest 100 (* 2 (basic-points han fu)))})
+  ; tsumo with 25 fu and 1 or 2 han is impossible 
+  (when (not (and (= fu 25) (< (:regular han) 3)))
+    {:everyone-pay (round-up-to-nearest 100 (* 2 (basic-points han fu)))}))
 
 (defn dealer-ron [han fu]
-  {:ron-pay (round-up-to-nearest 100 (* 6 (basic-points han fu)))})
+  (when (or
+         (> fu 25) ; ron with 20 fu is impossible
+         (and (= fu 25) (> (:regular han) 1))) ; ron with 25 fu 1 han is impossible 
+    {:ron-pay (round-up-to-nearest 100 (* 6 (basic-points han fu)))}))
 
 (defn non-dealer-ron [han fu]
-  {:ron-pay (round-up-to-nearest 100 (* 4 (basic-points han fu)))})
+  (when (or
+         (> fu 25) ; ron with 20 fu is impossible
+         (and (= fu 25) (> (:regular han) 1))) ; ron with 25 fu 1 han is impossible
+    {:ron-pay (round-up-to-nearest 100 (* 4 (basic-points han fu)))}))
 
-(defn total-score [{:keys [ron-pay everyone-pay dealer-pay non-dealer-pay]}]
-  (+ ron-pay (* 3 everyone-pay) dealer-pay (* 2 non-dealer-pay)))
+(defn split-pay [jikaze agari han fu]
+  (match [jikaze agari]
+    [:east   :ron] (dealer-ron han fu)
+    [_       :ron] (non-dealer-ron han fu)
+    [:east :tsumo] (dealer-tsumo han fu)
+    [_     :tsumo] (non-dealer-tsumo han fu)))
 
-(defn score [{:keys [jikaze agari] :as hand}]
-  (let [yakus (list-yakus hand)
-        han (hans yakus)
-        fus (minipoints-step-by-step hand)
-        fu (final-minipoints fus)
-        split-score (match [jikaze agari]
-                      [:east   :ron] (dealer-ron han fu)
-                      [_       :ron] (non-dealer-ron han fu)
-                      [:east :tsumo] (dealer-tsumo han fu)
-                      [_     :tsumo] (non-dealer-tsumo han fu))]
-    (assoc split-score
-           :jikaze jikaze
-           :agari agari
-           :total (total-score split-score)
-           :han han
-           :fu fus
-           :yakus yakus)))
+(defn total-pay [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]}]
+  (+ (* 3 everyone-pay) dealer-pay (* 2 non-dealer-pay) ron-pay))
+
+
+(defrecord Score [total split cap jikaze agari han fu yakus])
+
+(defn score-cap
+  "Matches total score and jikaze to a keyword or nil, representing the possible
+   score cap (mangan, haneman, baiman, sanbaiman, yakuman)"
+  [jikaze total]
+  (match [jikaze total]
+    [nil _] nil
+    [_ nil] nil
+    [:east 12000] :mangan
+    [:east 18000] :haneman
+    [:east 24000] :baiman
+    [:east 36000] :sanbaiman
+    [:east (_ :guard #(>= % 48000))] :yakuman
+    [_ 8000] :mangan
+    [_ 12000] :haneman
+    [_ 16000] :baiman
+    [_ 24000] :sanbaiman
+    [_ (_ :guard #(>= % 32000))] :yakuman
+    :else nil))
+
+(defn score
+  ([{:keys [jikaze agari] :as hand}]
+   (let [yakus (list-yakus hand)
+         han (hans yakus)
+         fus (minipoints-step-by-step hand)
+         fu (final-minipoints fus)
+         split (split-pay jikaze agari han fu)
+         total (total-pay split)
+         cap (score-cap jikaze total)]
+     (Score. total split cap jikaze agari han fus yakus)))
+  ([split jikaze agari han fu]
+   (let [total (total-pay split)
+         cap (score-cap jikaze total)]
+     (Score. total split cap jikaze agari {:regular han} {:some fu} []))))
+
+(def capname (comp s/capitalize (fnil name "")))
+
+(defn speech-of-score [{:keys [jikaze split total]}]
+  (let [cap (score-cap jikaze split)]
+    (str total (when (some? cap) (str " (" (capname cap) ")")))))
+
+(defn string-of-split-score [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]}]
+  (cond
+    (some? everyone-pay) (str everyone-pay "⨉3")
+    (every? some? [dealer-pay non-dealer-pay]) (str dealer-pay "+" non-dealer-pay "⨉2")
+    (some? ron-pay) (str ron-pay)))
+
+(defn string-of-score [{:keys [split cap] :as score}]
+  (if (or (nil? score) (nil? split))
+    "-"
+    (cond-> (string-of-split-score split)
+      (some? cap) (str " (" (capname cap) ")"))))
+
+(defn string-of-score-compact [{:keys [total cap] :as score}]
+  (if (or (nil? score) (nil? total) (zero? total))
+    "-"
+    (cond-> (str total)
+      (some? cap) (str " (" (capname cap) ")"))))
 
 (defn round-thousandth [score]
   (-> score (/ 1000) ceil int))
@@ -900,38 +949,6 @@
       (can-add-tile? hand tile))
     (some #{tile} (expand-groups (:an hand)))))
 
-(defn total-pay [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]
-                  :or {everyone-pay 0 dealer-pay 0 non-dealer-pay 0 ron-pay 0}}]
-  (+ (* 3 everyone-pay) dealer-pay (* 2 non-dealer-pay) ron-pay))
-
-(defn score-class [{:keys [jikaze] :as score}]
-  (match [jikaze (total-pay score)]
-    [:east 12000] :mangan
-    [:east 18000] :haneman
-    [:east 24000] :baiman
-    [:east 36000] :sanbaiman
-    [:east (_ :guard #(>= % 48000))] :yakuman
-    [_ 8000] :mangan
-    [_ 12000] :haneman
-    [_ 16000] :baiman
-    [_ 24000] :sanbaiman
-    [_ (_ :guard #(>= % 32000))] :yakuman
-    :else nil))
-
-(def capname (comp s/capitalize (fnil name "")))
-
-(defn string-of-score [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay] :as score}]
-  (let [sclass (score-class score)]
-    (cond-> (cond
-              (some? everyone-pay) (str everyone-pay "⨉3")
-              (every? some? [dealer-pay non-dealer-pay]) (str dealer-pay "+" non-dealer-pay "⨉2")
-              (some? ron-pay) (str ron-pay))
-      (some? sclass) (str " (" (capname sclass) ")"))))
-
-(defn speech-of-score [score]
-  (let [sclass (score-class score)]
-    (str (:total score) (when (some? sclass) (str " (" (capname sclass) ")")))))
-
 (defn string-of-yaku [lang yaku]
   (let [yname (get-in yakudb [(key yaku) :name lang] (name (key yaku)))
         yval (if (integer? (val yaku))
@@ -948,10 +965,10 @@
 (def map-tuple-names {1 "Single" 2 "Double" 3 "Triple" 4 "Quadruple"
                       5 "Quintuple" 6 "Sextuple"})
 
-(defn string-of-value [{:keys [yakuman regular]} fu]
+(defn string-of-value [{:keys [yakuman regular]} fus]
   (cond
     (some? yakuman) (if (= 1 yakuman) "Yakuman" (s/join " " [(get map-tuple-names yakuman yakuman) "Yakuman"]))
-    (some? regular) (str regular " han " (explain-minipoints fu))))
+    (some? regular) (str regular " han " (explain-minipoints fus))))
 
 (defn results [hand lang]
   (if (> (space-left hand) 1)
