@@ -8,7 +8,6 @@
    [riichi-calc.hand :as hand]
    [riichi-calc.state :as common-state]
    [riichi-calc.tile :as tile]
-   [riichi-calc.yakudb :refer [yakudb]]
    [riichi-calc.ui.reagent.audio :as audio]
    [riichi-calc.ui.reagent.history :as history]
    [riichi-calc.ui.reagent.wizard :as wizard]
@@ -69,25 +68,10 @@
      [widget/extra-yaku *state (:extra-yaku hand) language]
      [widget/extra *state (get-in hand [:extra :dora]) (get-in hand [:extra :yaku])]]))
 
-(defn speech-of-result [lang {:keys [yakus score]}]
-  (str
-   (s/join ". " (map (partial hand/string-of-yaku ({:romaji :ja} lang lang)) yakus))
-   ". "
-   (hand/speech-of-score score)))
-
-(defn result-win [lang {:keys [yakus han fu score] :as result}]
-  (let [actual-lang ({:romaji :ja} lang lang)]
-    (audio/speak actual-lang (speech-of-result actual-lang result)))
+(defn result-win [lang {:keys [score] :as result}]
   [:<>
-   [:table.table.is-hoverable [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
-    [:tbody
-     (for [yaku yakus
-           :let [wiki (get-in yakudb [(key yaku) :wiki])
-                 name (get-in yakudb [(key yaku) :name lang] (s/capitalize (name (key yaku))))]]
-       ^{:key (str (key yaku) (val yaku))}
-       [:tr [:td (if (nil? wiki) name [:a {:href wiki :target "_blank"} name])] [:td (val yaku)]])
-     [:tr.value [:td "Value"] [:td (hand/string-of-value han fu)]]
-     [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]]
+   [widget/button-play-results-speech lang result]
+   [widget/results-table-render lang result]
    [widget/score-table-render score]])
 
 (defn ukeire-tile [theme tile]

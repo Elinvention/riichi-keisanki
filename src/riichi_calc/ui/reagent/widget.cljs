@@ -5,7 +5,8 @@
    [riichi-calc.group :as group]
    [riichi-calc.yakudb :refer [yakudb]]
    [riichi-calc.ui.reagent.svg :as svg]
-   [riichi-calc.state :as state]))
+   [riichi-calc.state :as state]
+   [riichi-calc.ui.reagent.audio :as audio]))
 
 (defn radio-group [options value on-change]
   [:div.radios
@@ -183,3 +184,31 @@
                     :class (str cell-class " has-text-centered")
                     :colSpan colspan}
                cell-content]))])]]]))
+
+(defn results-table-render [lang {:keys [yakus han fu score]}]
+  [:table.table.is-hoverable [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
+   [:tbody
+    (for [yaku yakus
+          :let [wiki (get-in yakudb [(key yaku) :wiki])
+                name (get-in yakudb [(key yaku) :name lang] (s/capitalize (name (key yaku))))]]
+      ^{:key (str (key yaku) (val yaku))}
+      [:tr [:td (if (nil? wiki) name [:a {:href wiki :target "_blank"} name])] [:td (val yaku)]])
+    [:tr.value [:td "Value"] [:td (hand/string-of-value han fu)]]
+    [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]])
+
+(defn speech-of-result [lang {:keys [yakus score]}]
+  (str
+   (s/join ". " (map (partial hand/string-of-yaku ({:romaji :ja} lang lang)) yakus))
+   ". "
+   (hand/speech-of-score score)))
+
+(defn button-play-results-speech [lang result]
+  (println lang result)
+  [:input.button.block
+   {:type :button
+    :on-click (fn []
+                (let [actual-lang ({:romaji :ja} lang lang)
+                      speech (speech-of-result lang result)]
+                  (audio/speak actual-lang speech)
+                  (println "playing speech" speech)))
+    :value "Play results speech ▶️"}])
