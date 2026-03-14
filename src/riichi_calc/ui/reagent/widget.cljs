@@ -156,7 +156,7 @@
      [:table.table.is-hoverable
       [:thead
        [:tr
-        [:th {:colspan (inc cols)}
+        [:th {:colSpan (inc cols)}
          (str (if dealer? "Dealer " "Non-dealer ") (name agari) " score")]]
        [:tr [:th "Han"] (for [f table-fu] [:th {:key (str f)} f])]]
       [:tbody
@@ -181,5 +181,5 @@
                                   (- cols i))]]
               [:td {:key (str agari jikaze h f)
                     :class (str cell-class " has-text-centered")
-                    :colspan colspan}
+                    :colSpan colspan}
                cell-content]))])]]]))

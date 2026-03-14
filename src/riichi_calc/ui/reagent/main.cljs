@@ -48,7 +48,8 @@
 (defn new-hand! []
   (let [{:keys [hand]} @*state]
     (history/save-hand! hand)
-    (reset! *state state/initial-state)))
+    (reset! *state state/initial-state)
+    (swap! wizard/*wizard assoc :step 1)))
 
 (defn buttons []
   [:div.field.buttons

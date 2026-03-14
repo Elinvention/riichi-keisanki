@@ -1,5 +1,4 @@
 (ns riichi-calc.tile-test
-  #_{:clj-kondo/ignore [:refer-all]}
   (:require [clojure.test :refer [deftest testing is are]]
             [riichi-calc.tile :as t]))
 
@@ -83,7 +82,7 @@
 (deftest test-tiles-sorting
   (testing "tile-key"
   ;;TODO: better test
-    (for [seed [t/man t/sou t/pin] i (range 1 10) j (range 1 10)]
+    (doseq [seed [t/man t/sou t/pin] i (range 1 10) j (range 1 10)]
       (cond (= i j) (is (= (t/tile-key (seed i)) (t/tile-key (seed j))))
             (< i j) (is (< (t/tile-key (seed i)) (t/tile-key (seed j))))
             (> i j) (is (> (t/tile-key (seed i)) (t/tile-key (seed j)))))))

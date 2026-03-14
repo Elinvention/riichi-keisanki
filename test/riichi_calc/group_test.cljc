@@ -1,5 +1,4 @@
 (ns riichi-calc.group-test
-  #_{:clj-kondo/ignore [:refer-all]}
   (:require [clojure.test :refer [deftest is are testing]]
             [riichi-calc.group :as g]
             [riichi-calc.tile :as t]))
@@ -19,7 +18,7 @@
     (is (nil? (g/couple {:seed :wind :value :green})))
     (is (nil? (g/couple {:seed :man :value :green})))))
 
-(deftest g/group-predicates
+(deftest group-predicates
   (testing "simple?"
     (is (not (g/simple? (g/straight (t/man 1)))))
     (is (g/simple? (g/straight (t/man 2))))

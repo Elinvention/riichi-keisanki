@@ -692,9 +692,8 @@
 
 (def capname (comp s/capitalize (fnil name "")))
 
-(defn speech-of-score [{:keys [jikaze split total]}]
-  (let [cap (score-cap jikaze split)]
-    (str total (when (some? cap) (str " (" (capname cap) ")")))))
+(defn speech-of-score [{:keys [total cap]}]
+  (str total (when (some? cap) (str " (" (capname cap) ")"))))
 
 (defn string-of-split-score [{:keys [everyone-pay dealer-pay non-dealer-pay ron-pay]}]
   (cond

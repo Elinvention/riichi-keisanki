@@ -42,7 +42,7 @@
         1 (assoc h :bakaze :south)
         1 (assoc h :bakaze :north)
         0 (assoc h :jikaze :west :bakaze :west))))
-  (testing "sanshoku-doujin"
+  (testing "sanshoku-doujun"
     (is (h/sanshoku-doujun? (h/hand :an [(g/straight (t/pin 1)) (g/straight (t/sou 1))
                                                (g/straight (t/man 1))])))
     (is (h/sanshoku-doujun? (h/hand :an [(g/straight (t/pin 1)) (g/straight (t/pin 1))
@@ -505,6 +505,13 @@
     (is (h/can-add-chii? (h/hand) (t/man 1)))
     (is (h/can-add-chii? (h/hand :an (t/tiles :man [1 1 1])) (t/man 1)))
     (is (not (h/can-add-chii? (h/hand :an (t/tiles :man [1 1 1 1])) (t/man 1))))))
+
+(deftest misc-hands 
+  (testing "multiple yakuman hand" 
+    (let [hand (h/hand :an (g/groups :couple [(t/dragon :white)] :tris t/wind-tiles) :agaripai (t/dragon :white))
+          {:keys [han fu]} (h/score hand)]
+      (is (= "Quadruple Yakuman" (h/string-of-value han fu)))
+      )))
 
 (comment
   ;; TODO: REPL to proper tests

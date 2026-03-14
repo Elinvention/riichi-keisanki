@@ -62,7 +62,8 @@
              (save-to-localStorage! new-state)))
 
 (defn save-hand! [hand]
-  (swap! *history update :hands conj hand))
+  (when (or (seq? (:an hand)) (seq? (:min hand)))
+    (swap! *history update :hands conj hand)))
 
 (defn forget-hand! [i]
   (swap! *history update :hands
