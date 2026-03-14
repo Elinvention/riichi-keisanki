@@ -77,15 +77,17 @@
 (defn result-win [lang {:keys [yakus han fu score] :as result}]
   (let [actual-lang ({:romaji :ja} lang lang)]
     (audio/speak actual-lang (speech-of-result actual-lang result)))
-  [:table.table.is-hoverable [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
-   [:tbody
-    (for [yaku yakus
-          :let [wiki (get-in yakudb [(key yaku) :wiki])
-                name (get-in yakudb [(key yaku) :name lang] (s/capitalize (name (key yaku))))]]
-      ^{:key (str (key yaku) (val yaku))}
-      [:tr [:td (if (nil? wiki) name [:a {:href wiki :target "_blank"} name])] [:td (val yaku)]])
-    [:tr.value [:td "Value"] [:td (hand/string-of-value han fu)]]
-    [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]])
+  [:<>
+   [:table.table.is-hoverable [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
+    [:tbody
+     (for [yaku yakus
+           :let [wiki (get-in yakudb [(key yaku) :wiki])
+                 name (get-in yakudb [(key yaku) :name lang] (s/capitalize (name (key yaku))))]]
+       ^{:key (str (key yaku) (val yaku))}
+       [:tr [:td (if (nil? wiki) name [:a {:href wiki :target "_blank"} name])] [:td (val yaku)]])
+     [:tr.value [:td "Value"] [:td (hand/string-of-value han fu)]]
+     [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]]
+   [widget/score-table-render score]])
 
 (defn ukeire-tile [theme tile]
   [assoc-in (svg/tile theme tile) [1 :on-click]
