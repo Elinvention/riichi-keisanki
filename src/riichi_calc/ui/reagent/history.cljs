@@ -33,7 +33,9 @@
     (if-let [parsed-history (parse-history-string stored-history-str)]
       (if-let [version (:version parsed-history)]
         (if (<= version history-serialization-version)
-          parsed-history
+          (do
+            (js/console.info "Loaded history from localStorage:" parsed-history)
+            parsed-history)
           (do
             (js/console.warn "Stored history version is newer than expected. Using initial history.")
             initial-history))
@@ -49,20 +51,16 @@
 
 (defn ^:private save-to-localStorage! [history]
   (try
-    (let [hands (take 10 (:hands history))
+    (let [hands (vec (take 10 (:hands history)))
           history-to-save {:version history-serialization-version :hands hands}
           history-str (pr-str history-to-save)]
       (js/window.localStorage.setItem "history" history-str))
     (catch :default e
       (js/console.error "Failed to save history to localStorage:" e))))
 
-;; Auto-save to localStorage whenever history changes
-(add-watch *history :localStorage-sync
-           (fn [_key _atom _old-state new-state]
-             (save-to-localStorage! new-state)))
-
 (defn save-hand! [hand]
-  (when (or (seq? (:an hand)) (seq? (:min hand)))
+  (when (or (seq (:an hand)) (seq (:min hand)))
+    (println "Adding hand to history..." hand)
     (swap! *history update :hands conj hand)))
 
 (defn forget-hand! [i]
@@ -88,4 +86,9 @@
                  [:div.control [:button.button.is-danger {:on-click #(forget-hand! i)} "Forget"]]]])]])]))
 
 (defn init! []
-  (reset! *history (load-history)))
+  (reset! *history (load-history))
+  ;; Auto-save to localStorage whenever history changes
+  (add-watch *history :localStorage-sync
+             (fn [_key _atom _old-state new-state]
+               (println "Saving history to localStorage..." new-state)
+               (save-to-localStorage! new-state))))
