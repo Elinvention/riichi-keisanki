@@ -16,7 +16,7 @@
   "author": "Elia Argentieri",
   "license": "GPL-3.0",
   "devDependencies": {
-    "shadow-cljs": "^2.28.14"
+    "shadow-cljs": "^3.3.6"
   },
   "dependencies": {
     "bulma": "^1.0.2",
