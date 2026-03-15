@@ -328,45 +328,45 @@
                                                 (g/tris (t/pin 1))
                                                 (t/sou 2)]))))))
 
-(deftest test-grouping-tiles 
+(deftest test-grouping-tiles
   (testing "grouped-tiles"
     (are [grouped tiles] (= grouped (h/grouped-tiles tiles))
       [(g/tris (t/man 1))] (t/tiles :man [1 1 1])
       [(g/tris (t/man 2))] (t/tiles :man [2 2 2])
       (g/groups :tris (t/tiles :man [1 5 9])) (t/tiles :man [1 1 1 5 5 5 9 9 9])))
-  
+
   (testing "Recognize chiitoitsu hand"
     (let [h (h/hand :an (apply concat (map #(t/couple (apply t/tile %))
-                                              [[:sou 1] [:sou 5] [:pin 3]
-                                               [:man 4] [:man 6]
-                                               [:pin 4] [:sou 9]])))]
+                                           [[:sou 1] [:sou 5] [:pin 3]
+                                            [:man 4] [:man 6]
+                                            [:pin 4] [:sou 9]])))]
       (is (= 7 (count (:an (h/grouped h))))))
     (let [gh (h/grouped-hand :an (mapv t/man [1 1 3 3 4 4 5 5 6 6 7 7 9 9]))]
       (is (= 7 (count (:an gh)))) "This hand is chiitoitsu"))
 
   (testing "Recognize regular hand"
     (let [hand (h/hand :an (concat (t/straight (t/pin 7))
-                                      (t/straight (t/pin 1))
-                                      (t/tris (t/dragon :green))
-                                      (t/straight (t/man 1))
-                                      (t/couple (t/sou 1))))]
+                                   (t/straight (t/pin 1))
+                                   (t/tris (t/dragon :green))
+                                   (t/straight (t/man 1))
+                                   (t/couple (t/sou 1))))]
       (is (= 5 (count (:an (h/grouped hand))))))
     (is (= (h/hand :an (conj (mapv g/tris [(t/man 1) (t/man 2) (t/man 3) (t/man 4)])
-                                (g/couple (t/man 5))))
+                             (g/couple (t/man 5))))
            (h/grouped-hand :an (mapv t/man [1 1 1 2 2 2 3 3 3 4 4 4 5 5]))))
     (is (= (h/hand :an [(g/straight (t/man 1)) (g/tris (t/man 1))
-                           (g/couple (t/man 5)) (g/tris (t/man 7))
-                           (g/tris (t/man 8))])
+                        (g/couple (t/man 5)) (g/tris (t/man 7))
+                        (g/tris (t/man 8))])
            (h/grouped-hand :an (mapv t/man [1 1 1 1 2 3 5 5 7 7 7 8 8 8]))))
     (let [gh (h/grouped-hand :an (mapv t/man [1 1 2 2 3 3 4 4 5 5 6 6 7 7]))]
       (is (= 5 (count (:an gh))) "this hand is not chiitoitsu, but ryanpeikou"))
     (let [gh (h/grouped-hand :an (apply concat (map #(t/couple (apply t/tile %))
-                                                       [[:sou 1] [:sou 5] [:pin 3]
-                                                        [:man 4] [:man 6]
-                                                        [:pin 4] [:sou 9]])))]
+                                                    [[:sou 1] [:sou 5] [:pin 3]
+                                                     [:man 4] [:man 6]
+                                                     [:pin 4] [:sou 9]])))]
       (is (= 7 (count (:an gh)))))
     (let [gh (h/grouped-hand :an (concat (t/couple (t/dragon :red))
-                                            (mapv t/man [2 3 4 5 5 6 7 8 9 9 9])))]
+                                         (mapv t/man [2 3 4 5 5 6 7 8 9 9 9])))]
       ;;(hand/space-left gh)
       (is (= 5 (count (:an gh))))
       (is (every? :kind (:an gh)))
@@ -374,47 +374,71 @@
     (let [gh (h/grouped-hand :an (mapv t/man [1 2 3 4 5 5 5 6 7 8 9 9 9]))]
       (is (= 0 (h/shanten gh))))
     (let [gh (h/grouped-hand :an (concat (mapv t/pin [5 6 7 7 8])
-                                            (mapv t/man [2 2 2 3 4 4 5 6])))]
+                                         (mapv t/man [2 2 2 3 4 4 5 6])))]
       (is (h/tenpai? gh)))
     (let [gh (h/grouped-hand :min [(g/tris (t/wind :east))]
-                                :an (t/tiles :man [2 2 2 3 4] :sou [2 2 2] :pin [5 6 7]))]
+                             :an (t/tiles :man [2 2 2 3 4] :sou [2 2 2] :pin [5 6 7]))]
       (is (= [(g/couple (t/man 2)) (g/straight (t/man 2))
               (g/tris (t/sou 2)) (g/straight (t/pin 5))] (:an gh)))
       (is (= -1 (h/shanten gh)))
       (is (not (h/tenpai? gh))))
     (let [h (h/grouped-hand :an (t/tiles :man [4 5 6] :pin [1 1 1 2 3 3 4 5 6 7 8])
-                          :agaripai (t/pin 3))]
+                            :agaripai (t/pin 3))]
       (is (h/regular? h))
       (is (= #{:penchan :ryanmen} (h/machi h)))
       (is (h/pinfu? h))))
-  
+
   (testing "Open regular hand"
     (let [d1 {:visited [] :not-visited [(t/man 2) (t/man 2) (t/man 2) (t/sou 2) (t/sou 2)]}
           d2 (h/group-branch-n-bound d1)]
       (is (= 2 (count d2)))
       (is (= 0 (h/lower-evaluation d2)))
       (is (= 10 (h/objective-fn d2))))
-    (let [h (h/grouped-hand :min (g/groups 
-                                     :tris [(t/redfive :man) (t/sou 4) (t/pin 2)])
-                               :an [(t/man 2) (t/man 2) (t/man 2) (t/sou 2) (t/sou 2)])]
+    (let [h (h/grouped-hand :min (g/groups
+                                  :tris [(t/redfive :man) (t/sou 4) (t/pin 2)])
+                            :an [(t/man 2) (t/man 2) (t/man 2) (t/sou 2) (t/sou 2)])]
       (is (= -1 (h/shanten h)))
       (is (h/regular? h))))
 
   (testing "Recognize invalid hand"
     (let [g (h/grouped-hand :an (concat (t/straight (t/pin 7))
-                                           (t/straight (t/pin 1))
-                                           (t/tris (t/dragon :green))
-                                           (t/straight (t/man 1))
-                                           [(t/tile :sou 5) (t/tile :sou 9)]))]
+                                        (t/straight (t/pin 1))
+                                        (t/tris (t/dragon :green))
+                                        (t/straight (t/man 1))
+                                        [(t/tile :sou 5) (t/tile :sou 9)]))]
       (is (= 6 (count (:an g))))
       (is (= 4 (count (filter :kind (:an g)))))
       (is (= 2 (count (remove :kind (:an g))))))
     (let [g (h/grouped-hand :an (t/tiles :man [1 1 1 2 3 5 9 9]
-                                               :sou [1 1 1]
-                                               :pin [2 2 2]))]
+                                         :sou [1 1 1]
+                                         :pin [2 2 2]))]
       (is (= 6 (count (:an g))))
       (is (= 5 (count (filter :kind (:an g)))))
       (is (= 1 (count (remove :kind (:an g)))))))
+
+  (testing "Group decompositions"
+    (is (= 5 (->> (h/from-notation "234777m45506s345p")
+                  (h/hand :an)
+                  (h/grouped)
+                  (:an)
+                  (count))))
+
+    (is (= (seq (t/straight (t/sou 4)))
+           (->> (h/from-notation "45506s")
+                (t/dedupe-tiles)
+                (take 3))))
+
+    (is (= [(g/straight (t/sou 4))]
+           (->> {:tiles (h/from-notation "45506s") :groups []}
+                (h/->decomposition)
+                (h/group-straight)
+                (:visited))))
+
+    (is (= [(g/straight (t/sou 4))]
+           (->> {:tiles (h/from-notation "45556s") :groups []}
+                (h/->decomposition)
+                (h/group-straight)
+                (:visited)))))
 
   (testing "Group branch and bound"
     (is (= [(g/straight (t/man 1)) (g/tris (t/man 1))
@@ -443,8 +467,8 @@
             (g/tris (t/pin 2))]
            (:visited (h/group-branch-n-bound
                       {:not-visited (t/tiles :man [1 1 1 2 3 9 9 9]
-                                                :sou [1 1 1]
-                                                :pin [2 2 2])
+                                             :sou [1 1 1]
+                                             :pin [2 2 2])
                        :visited []}))))
 
     (is (= [(g/couple (t/man 1)) (g/couple (t/man 9))
@@ -453,9 +477,9 @@
             (g/couple (t/wind :east))]
            (:visited (h/group-branch-n-bound
                       {:not-visited (t/tiles :man [1 1 9 9] :sou [1 1 9 9]
-                                                :pin [1 1 9 9] :wind [:east :east])
+                                             :pin [1 1 9 9] :wind [:east :east])
                        :visited []})))))
-  
+
   (testing "Misc kokushi"
     (let [k (h/hand :an t/kokushi-tiles :agaripai (t/man 1))
           kc (update k :an t/conj-sort-tile (t/man 1))

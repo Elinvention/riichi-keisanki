@@ -771,7 +771,7 @@
          :not-visited (vec (nthrest not-visited n))}))))
 
 (defn group-straight [{:keys [visited not-visited]}]
-  (let [tiles-deduped (take 3 (dedupe not-visited))]
+  (let [tiles-deduped (take 3 (tile/dedupe-tiles not-visited))]
     (when (= (count tiles-deduped) 3)
       (when-let [group-deduped (group/group tiles-deduped)]
         {:visited (conj visited group-deduped)
@@ -836,7 +836,7 @@
    Takes in a decomposition (a map {:visited [] :not-visited []}) and returns a
    new decomposition with all tiles moved to visited and possibly grouped."
   [decomposition]
-  ;;(println "group-branch-n-bound" (:not-visited decomposition))
+  ;;(println "group-branch-n-bound" (map tile/to-utf16 (:not-visited decomposition)))
   (loop [best (group-greedy decomposition)
          bound (objective-fn best)
          queue [decomposition]

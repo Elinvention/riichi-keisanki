@@ -342,3 +342,22 @@
           seed (seed-from-notation (last notation) raw-value)
           value (value-from-notation seed raw-value)]
       (tile seed value))))
+
+(defn dedupe-tiles
+  "Copied from clojure.core and modified to compare tiles.
+  Returns a lazy sequence removing consecutive duplicates in coll.
+  Returns a transducer when no collection is provided."
+  ([]
+   (fn [rf]
+     (let [pa (volatile! ::none)]
+       (fn
+         ([] (rf))
+         ([result] (rf result))
+         ([result input]
+          (let [prior @pa]
+            (vreset! pa input)
+            ; instead of = use same? to compare tiles
+            (if (same? prior input)
+              result
+              (rf result input))))))))
+  ([coll] (sequence (dedupe-tiles) coll)))
