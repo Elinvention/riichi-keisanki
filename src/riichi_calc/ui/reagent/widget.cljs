@@ -152,7 +152,11 @@
         dealer? (= jikaze :east)
         current-han (:regular han)
         current-fu (hand/final-minipoints fu)
-        highlight? (fn [h f] (and (= h current-han) (= f current-fu)))]
+        highlight? (fn [h f cap]
+                     (if (some? cap)
+                       (or (and (= h current-han) (>= current-fu f))
+                           (and (>= h 13) (some? (:yakuman han))))
+                       (and (= h current-han) (= current-fu f))))]
     [:div.table-container
      [:table.table.is-hoverable
       [:thead
@@ -174,7 +178,7 @@
                                           :total current-total-pay
                                           :cap score-cap)
                         cell-content (hand/string-of-score-compact test-score)
-                        cell-class (if (highlight? h f)
+                        cell-class (if (some #(highlight? % f score-cap) (range h next))
                                      "is-selected"
                                      ((fnil score-cap-to-cell-class "") score-cap))
                         colspan (when (some? score-cap)
