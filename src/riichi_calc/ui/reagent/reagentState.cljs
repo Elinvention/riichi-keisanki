@@ -14,6 +14,9 @@
 
 (def initial-state (->ReagentState (hand/hand) :an :regular :romaji))
 
+(defn reset-initial! [*state]
+  (reset! *state initial-state))
+
 (defn remove-from-hand! [*state path index]
   (swap! *state update :hand hand/remove-from-hand path index))
 

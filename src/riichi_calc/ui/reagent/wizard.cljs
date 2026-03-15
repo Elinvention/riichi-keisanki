@@ -8,7 +8,8 @@
    [riichi-calc.ui.reagent.svg :as svg]
    [riichi-calc.ui.reagent.widget :as widget]))
 
-(defonce *wizard (r/atom {:open false :step 1}))
+(def initial-wizard {:open false :step 1})
+(defonce *wizard (r/atom initial-wizard))
 
 (defn close! []
   (swap! *wizard assoc :open false))
@@ -18,6 +19,9 @@
 
 (defn toggle! []
   (swap! *wizard update :open not))
+
+(defn restart! []
+  (reset! *wizard initial-wizard))
 
 (def ^:private steps
   [{:icon #(svg/tile-fg %1 (tile/wind (:jikaze %2))) :title "Jikaze"}
