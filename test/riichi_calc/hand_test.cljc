@@ -125,7 +125,7 @@
                        :agari :tsumo, :bakaze :east, :jikaze :east
                        :agaripai (t/pin 1), :dorahyouji [(t/pin 9)])]
       (is (=
-           {:dora 2, :menzen-tsumo 1, :iipeikou 1, :pinfu 1, :chinitsu 6 :ittsu 2}
+           {:kazoe-yakuman :yakuman}
            (h/list-yakus h))))
 
     (let [h (h/hand :an [(g/straight (t/pin 1)) (g/straight (t/pin 7))
@@ -140,7 +140,8 @@
                        :min [(g/tris (t/dragon :white))]
                        :agari :tsumo, :bakaze :east, :jikaze :east
                        :agaripai (t/pin 4), :dorahyouji [(t/dragon :green)])]
-      (is (= {:yakuhai 2, :honitsu 2} (h/list-yakus h))))
+      (is (= {:yakuhai 3, :honitsu 2} (h/list-yakus h)))
+      (h/to-notation h))
 
     (is (= 1
            (:yakuman
@@ -167,6 +168,12 @@
            {:dora 1, :menzen-tsumo 1}))))
 
 
+(def chiitoitsu-hand
+  (h/hand :an
+          (g/groups :couple
+                    [(t/pin 2) (t/sou 3) (t/man 4) (t/pin 5)
+                     (t/sou 6) (t/pin 7) (t/pin 8)])))
+
 (deftest minipoints-test
   (testing "has-value-couple?"
     (is (h/has-value-couple? (h/hand :an [(g/couple (t/dragon :red))])))
@@ -178,11 +185,10 @@
                               :agari :ron, :jikaze :west)]
                 (h/minipoints h))))
 
-    (is (= 25 (let [t [(t/pin 2) (t/sou 3) (t/man 4) (t/pin 5)
-                       (t/sou 6) (t/pin 7) (t/pin 8)]
-                    h (h/hand :an (mapv g/couple t))]
-                (h/minipoints h))))
-    
+    (is (h/chiitoitsu? chiitoitsu-hand))
+    (is (= 25 (:chiitoitsu (h/minipoints-step-by-step chiitoitsu-hand))))
+    (is (= 25 (h/minipoints chiitoitsu-hand)))
+
     (is (= 46 (let [h (h/hand :an [(g/tris (t/dragon :white)) (g/tris (t/wind :east))
                                    (g/straight (t/pin 7)) (g/straight (t/pin 4))
                                    (g/couple (t/pin 5))]
@@ -328,6 +334,10 @@
                                                 (g/tris (t/pin 1))
                                                 (t/sou 2)]))))))
 
+(def k (h/hand :an t/kokushi-tiles :agaripai (t/man 1)))
+(def kc (update k :an t/conj-sort-tile (t/man 1)))
+(def kt (h/hand :an (conj (vec (disj t/kokushi-tiles (t/man 9))) (t/man 1)) :agaripai (t/man 9)))
+
 (deftest test-grouping-tiles
   (testing "grouped-tiles"
     (are [grouped tiles] (= grouped (h/grouped-tiles tiles))
@@ -342,7 +352,7 @@
                                             [:pin 4] [:sou 9]])))]
       (is (= 7 (count (:an (h/grouped h))))))
     (let [gh (h/grouped-hand :an (mapv t/man [1 1 3 3 4 4 5 5 6 6 7 7 9 9]))]
-      (is (= 7 (count (:an gh)))) "This hand is chiitoitsu"))
+      (is (= 7 (count (:an gh)))) "Chiitoitsu hand should have 7 concealed groups"))
 
   (testing "Recognize regular hand"
     (let [hand (h/hand :an (concat (t/straight (t/pin 7))
@@ -481,28 +491,25 @@
                        :visited []})))))
 
   (testing "Misc kokushi"
-    (let [k (h/hand :an t/kokushi-tiles :agaripai (t/man 1))
-          kc (update k :an t/conj-sort-tile (t/man 1))
-          kt (h/hand :an (conj (vec (disj t/kokushi-tiles (t/man 9))) (t/man 1)) :agaripai (t/man 9))]
-      (is (h/juusan-menmachi? (h/grouped k)))
-      (is (not (h/juusan-menmachi? (h/grouped kt))))
-      (is (= 1 (h/space-left k)))
-      (is (= 0 (h/space-left kc)))
-      (is (= :kokushi (h/shape k)))
-      (is (= t/kokushi-tiles (h/ukeire k)))
-      (is (= 1 (count (h/ukeire kt))))
-      (is (= 0 (h/shanten (h/grouped k))))
-      (is (= -1 (h/shanten (h/grouped kc))))
-      (is (h/tenpai? (h/grouped k)))
-      (is (not (h/tenpai? (h/grouped kc)))))
+    (is (not (h/juusan-menmachi? (h/grouped k))))
+    (is (not (h/juusan-menmachi? (h/grouped kt))))
+    (is (= 1 (h/space-left k)))
+    (is (= 0 (h/space-left kc)))
+    (is (= :kokushi (h/shape k)))
+    (is (= t/kokushi-tiles (h/ukeire k)))
+    (is (= 1 (count (h/ukeire kt))))
+    (is (= 0 (h/shanten (h/grouped k))))
+    (is (= -1 (h/shanten (h/grouped kc))))
+    (is (h/tenpai? (h/grouped k)))
+    (is (not (h/tenpai? (h/grouped kc))))
     (is (h/juusan-menmachi? (assoc (h/kokushi-hand (t/man 1)) :agaripai (t/man 1))))
     (is (not (h/juusan-menmachi? (assoc (h/kokushi-hand (t/man 1)) :agaripai (t/sou 9)))))))
 
 (deftest notation
   (testing "to-notation" 
     (are [notation tiles] (= notation (h/to-notation tiles))
-      "12355m111s567p" (t/tiles :man [1 2 3 5 5] :sou [1 1 1] :pin [5 6 7])
-      "555777z" (g/groups :tris (t/tiles :dragon [:red :white]))))
+      "12355m111s567p" (h/hand :an (t/tiles :man [1 2 3 5 5] :sou [1 1 1] :pin [5 6 7]))
+      "555777z" (h/hand :an (g/groups :tris (t/tiles :dragon [:red :white])))))
   (testing "from-notation"
     (are [tiles notation] (= tiles (h/from-notation notation))
       (t/tiles :man [1 2 3 5 5] :sou [1 1 1] :pin [5 6 7]) "12355m111s567p"

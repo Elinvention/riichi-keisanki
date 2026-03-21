@@ -582,7 +582,9 @@
             (some #{:kanchan :penchan :tanki} (machi hand)) (assoc :machi 2))))
 
 (defn final-minipoints [fus]
-  (round-up-to-nearest 10 (->> fus (vals) (flatten) (apply +))))
+  (if (:chiitoitsu fus)
+    25
+    (round-up-to-nearest 10 (->> fus (vals) (flatten) (apply +)))))
 
 (def minipoints (comp final-minipoints minipoints-step-by-step))
 

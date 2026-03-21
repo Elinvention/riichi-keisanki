@@ -60,24 +60,28 @@
     (is (= 3 (count (t/straight (t/pin 1)))))
     (is (= 3 (count (t/straight (t/pin 7)))))
     (is (nil? (t/straight (t/sou 9))))
-    (is (nil? (t/straight (t/man 0))))
+    (is (some? (t/straight (t/man 0))))
+    (is (nil? (t/straight (t/man 10))))
     (is (nil? (t/straight (t/wind :red))))
     (is (vector? (t/straight (t/pin 5))))
 
     (is (= 4 (count (t/quad (t/man 9)))))
     (is (nil? (t/quad (t/wind 1))))
     (is (vector? (t/quad (t/pin 5))))
-    (is (nil? (t/quad (t/pin 0))))
+    (is (some? (t/quad (t/pin 0))))
+    (is (nil? (t/quad (t/pin 11))))
 
     (is (= 3 (count (t/tris (t/sou 1)))))
     (is (nil? (t/tris (t/dragon 1))))
     (is (vector? (t/tris (t/pin 5))))
-    (is (nil? (t/tris (t/pin 0))))
+    (is (some? (t/tris (t/pin 0))))
+    (is (nil? (t/tris (t/pin 10))))
 
     (is (= 2 (count (t/couple (t/pin 5)))))
     (is (nil? (t/couple (t/dragon :easte))))
     (is (vector? (t/couple (t/pin 5))))
-    (is (nil? (t/couple (t/pin 0))))))
+    (is (some? (t/couple (t/pin 0))))
+    (is (nil? (t/couple (t/pin 10))))))
 
 (deftest test-tiles-sorting
   (testing "tile-key"
