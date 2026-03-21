@@ -4,9 +4,7 @@
   org.clojure/core.match {:mvn/version "1.1.1"}
   cljfx/cljfx {:mvn/version "1.10.6"}
   org.clojure/clojurescript {:mvn/version "1.12.134"}
-  reagent/reagent {:mvn/version "1.3.0"}
-  cljsjs/react {:mvn/version "18.3.1-1"}
-  cljsjs/react-dom {:mvn/version "18.3.1-1"}}
+  reagent/reagent {:mvn/version "2.0.1"}}
  :aliases {:test {:extra-paths ["test"]}
            :main {:exec-fn riichi-calc.ui.fx.main/-main}
            :cljs {:extra-deps {thheller/shadow-cljs {:mvn/version "3.3.6"}}}}}
