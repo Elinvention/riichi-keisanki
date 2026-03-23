@@ -1,12 +1,12 @@
 (ns riichi-calc.ui.reagent.widget
   (:require
    [clojure.string :as s]
-   [riichi-calc.hand :as hand]
    [riichi-calc.group :as group]
-   [riichi-calc.yakudb :refer [yakudb]]
-   [riichi-calc.ui.reagent.svg :as svg]
+   [riichi-calc.hand :as hand]
    [riichi-calc.state :as state]
-   [riichi-calc.ui.reagent.audio :as audio]))
+   [riichi-calc.ui.reagent.audio :as audio]
+   [riichi-calc.ui.reagent.svg :as svg]
+   [riichi-calc.yakudb :refer [yakudb]]))
 
 (defn radio-group [options value on-change]
   [:div.radios
@@ -109,34 +109,58 @@
         [:div.tile-row (for [[index dora] (map-indexed vector uradoras)]
                          ^{:key (str index dora)} [dorahyouji-tile *state dora index])])]]))
 
-(defn hand-tile [svg-tile-fn theme tile on-click path pos dora]
-  (cond-> (svg-tile-fn theme tile)
-    (fn? on-click) (assoc-in [1 :on-click] #(on-click path pos))
-    dora (assoc-in [1 :class] "dora")))
+(defrecord TileMetaData [tile on-click-fn path pos dora?])
+
+(defn hand-tile [theme {:keys [tile on-click-fn path pos dora?]}]
+  (cond-> (svg/tile theme tile)
+    (fn? on-click-fn) (assoc-in [1 :on-click] (fn [e]
+                                                (.stopPropagation e)
+                                                (on-click-fn path pos)))
+    dora? (assoc-in [1 :class] "dora")))
+
+(defn hand-group [theme tiles-meta on-click-fn path pos]
+  [:div.tile-group {:on-click (fn [e]
+                                (.stopPropagation e)
+                                (on-click-fn path pos))}
+   (for [[i tile-meta] (map-indexed vector tiles-meta)]
+     ^{:key (str "group" i theme tiles-meta)}
+     [hand-tile theme tile-meta])])
+
+(defn ankan->meta [ankan-group pos dora?]
+  (map
+    (fn [[j tile]] (TileMetaData. (when (< 0 j 3) tile) nil :an pos dora?))
+    (map-indexed vector (group/expand ankan-group))))
 
 (defn- hand-an-render [theme {:keys [an] :as hand} on-click]
   (reduce
    (fn [val [i group-or-tile]]
      (if (group/group? group-or-tile)
-       (concat val
-               (for [[j tile] (map-indexed vector (group/expand group-or-tile))]
-                 ^{:key (str "an" tile i j)}
-                 [hand-tile svg/tile theme (when (< 0 j 3) tile) on-click :an i (hand/dora? hand tile)]))
-       (conj val
-             ^{:key (str "an" group-or-tile i)}
-             [hand-tile svg/tile theme group-or-tile on-click :an i (hand/dora? hand group-or-tile)])))
+       (let [group group-or-tile
+             tiles (group/expand group)
+             tiles-meta (ankan->meta group i (hand/dora? hand (first tiles)))]
+         (conj val
+                 ^{:key (str "group" i theme tiles on-click)}
+                 [hand-group theme tiles-meta on-click :an i]))
+       (let [tile group-or-tile
+             tile-meta (TileMetaData. tile on-click :an i (hand/dora? hand tile))]
+         (conj val
+               ^{:key (str "an" tile i)}
+               [hand-tile theme tile-meta]))))
    []
    (map-indexed vector an)))
 
 (defn- hand-min-render [theme {:keys [min] :as hand} on-click]
-  (for [[index group] (map-indexed vector min)
-        [i tile] (map-indexed vector (group/expand group))]
-    ;;{:fx/type min-view :tile tile :index index :rotate (if (= i 0) 90 0) :theme theme}
-    ^{:key (str "min" tile index i)}
-    [hand-tile (if (= i 0) svg/tile-rotated svg/tile) theme tile on-click :min index (hand/dora? hand tile)]))
+  (for [[i group] (map-indexed vector min)
+        :let [tiles (map
+                     (fn [tile] (TileMetaData. tile nil :min i (hand/dora? hand tile)))
+                     (group/expand group))]]
+    ^{:key (str "min" tiles i)}
+    [hand-group theme tiles on-click :min i]))
 
 (defn hand-render [theme hand on-click]
-  [:div.hand (concat (hand-an-render theme hand on-click) (hand-min-render theme hand on-click))])
+  [:div.hand 
+   (concat (hand-an-render theme hand on-click)
+           (hand-min-render theme hand on-click))])
 
 (def table-fu [20 25 30 40 50 60 70 80 90 100 110])
 (def table-han [1 2 3 4 5 6 8 11 13 "+"])

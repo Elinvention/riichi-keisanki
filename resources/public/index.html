@@ -41,7 +41,7 @@
         user-select: none;
         transition: scale 0.1s cubic-bezier(1,0,0,1);
       }
-      .mahjong-tile:hover {
+      .mahjong-tile:hover, .tile-group:hover .mahjong-tile {
         scale: 105%;
       }
       .dora {
@@ -67,10 +67,19 @@
         margin: 0 10px 0 10px;
         max-height: 72px;
       }
-      .tile-row {
+      .tile-row, .tile-group {
         display: inline-flex;
         flex-wrap: nowrap;
         gap: 2px;
+      }
+      .tile-group {
+        margin-left: 1em;
+        transition: all 0.1s cubic-bezier(1,0,0,1);
+      }
+      .tile-group:hover {
+        gap: 5px;
+        margin-left: calc(1em + 2px);
+        margin-right: 2px;
       }
       .flex-column-2px {
         display: flex;
@@ -83,6 +92,9 @@
         gap: 2px;
         margin: 20px 0;
         justify-content: center;
+        align-content: center;
+        align-items: center;
+        flex-direction: column;
       }
       table, th, td {
         padding: 10px;
@@ -109,45 +121,45 @@
     </style>
   </head>
   <body>
-    <main>
-    <h1 class="title is-1">リーチ計算機 Riichi Keisanki</h1>
+    <main class="container">
+      <h1 class="title is-1">リーチ計算機 Riichi Keisanki</h1>
 
-    <section class="hero">
-      <div id="interactive">
-        
-      </div>
-    </section>
-    
-    <section class="section">
-      <h2 class="title is-2">Results</h2>
-      <div id="results"></div>
-    </section>
-    </section>
-    
-    <section class="section">
-      <h2 class="title is-2">History</h2>
-      <div id="history"></div>
-    </section>
+      <section class="hero">
+        <div id="interactive">
+          
+        </div>
+      </section>
+      
+      <section class="section">
+        <h2 class="title is-2">Results</h2>
+        <div id="results"></div>
+      </section>
+      </section>
+      
+      <section class="section">
+        <h2 class="title is-2">History</h2>
+        <div id="history"></div>
+      </section>
 
-    <section class="section">
-      <h2 class="title is-2">Glossary</h2>
-      <ul>
-        <li>Bakaze 場風 turn wind</li>
-        <li>Jikaze 自風 (own) seat wind</li>
-        <li>Dorahyoji ドラ表示 dora indicator</li>
-        <li>Agari 和がり generic call for winning a hand</li>
-        <li>Agaripai 和了り牌 winning tile</li>
-        <li>Ron 栄 win by deal in</li>
-        <li>Tsumo 自摸 win by self draw</li>
-        <li>An 暗 "dark" concealed tiles</li>
-        <li>Pon ポン call for open triplet</li>
-        <li>Chii チイ call for open straight</li>
-        <li>Kan 槓 call for open quad</li>
-        <li>Ankan 暗槓 call for concealed kan</li>
-        <li>Akadora 赤ドラ red fives</li>
-      </ul>
-      <p>For more information visit the <a href="https://riichi.wiki/">Riichi Wiki</a>.</p>
-    </section>
+      <section class="section">
+        <h2 class="title is-2">Glossary</h2>
+        <ul>
+          <li>Bakaze 場風 turn wind</li>
+          <li>Jikaze 自風 (own) seat wind</li>
+          <li>Dorahyoji ドラ表示 dora indicator</li>
+          <li>Agari 和がり generic call for winning a hand</li>
+          <li>Agaripai 和了り牌 winning tile</li>
+          <li>Ron 栄 win by deal in</li>
+          <li>Tsumo 自摸 win by self draw</li>
+          <li>An 暗 "dark" concealed tiles</li>
+          <li>Pon ポン call for open triplet</li>
+          <li>Chii チイ call for open straight</li>
+          <li>Kan 槓 call for open quad</li>
+          <li>Ankan 暗槓 call for concealed kan</li>
+          <li>Akadora 赤ドラ red fives</li>
+        </ul>
+        <p>For more information visit the <a href="https://riichi.wiki/">Riichi Wiki</a>.</p>
+      </section>
     </main>
 
     <footer>

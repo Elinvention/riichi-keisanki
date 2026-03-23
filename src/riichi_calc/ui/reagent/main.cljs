@@ -35,7 +35,9 @@
 (defn keyboard-render []
   (let [{:keys [keyboard-mode hand theme]} @*state 
         enabled? (partial common-state/can-input? keyboard-mode hand)]
-    [widget/keyboard *state theme tile/all-34-tiles-with-redfives enabled? state/keyboard-input!]))
+    [:div.field
+     [widget/keyboard *state theme tile/all-34-tiles-with-redfives enabled? state/keyboard-input!]
+     [keyboard-mode-render theme]]))
 
 (defn- advance-wind [wind]
   (swap! *state update-in [:hand wind] tile/wind-next))
@@ -55,15 +57,17 @@
    [:button.button.is-info {:on-click wizard/open!} "Wizard"]
    [:button.button.is-primary {:on-click new-hand!} "New hand"]])
 
+(defn hand-wind-agaripai-dorahyouji [theme hand]
+  [:div#hand-properties.field
+   (wind-button (tile/wind (:bakaze hand)) :bakaze theme)
+   (wind-button (tile/wind (:jikaze hand)) :jikaze theme)
+   (widget/agaripai-view *state (:agaripai hand))
+   (widget/dorahyouji *state hand)])
+
 (defn hand-properties-render []
   (let [{:keys [hand theme language]} @*state]
     [:<>
-     [buttons]
-     [:div#hand-properties.field
-      (wind-button (tile/wind (:bakaze hand)) :bakaze theme)
-      (wind-button (tile/wind (:jikaze hand)) :jikaze theme)
-      (widget/agaripai-view *state (:agaripai hand))
-      (widget/dorahyouji *state hand)]
+     [hand-wind-agaripai-dorahyouji theme hand]
      [widget/agari *state (:agari hand)]
      [widget/extra-yaku *state (:extra-yaku hand) language]
      [widget/extra *state (get-in hand [:extra :dora]) (get-in hand [:extra :yaku])]]))
@@ -159,10 +163,10 @@
 
 (defn app-render []
   [:<>
-   [hand-properties-render]
-   [keyboard-render]
-   [keyboard-mode-render]
+   [buttons]
    [widget/hand-render (:theme @*state) (:hand @*state) (partial state/remove-from-hand! *state)]
+   [keyboard-render]
+   [hand-properties-render]
    [notation-render]
    [settings-render]
    [wizard/render *state]
