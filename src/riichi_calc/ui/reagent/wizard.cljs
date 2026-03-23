@@ -109,41 +109,42 @@
 (defn render [*state]
   (let [{:keys [hand theme]} @*state
         remove-from-hand (partial state/remove-from-hand! *state)]
-    [(if (:open @*wizard) :div#wizard.modal.is-active :div#wizard.modal)
-     [:div.modal-background {:on-click #(swap! *state assoc-in [:wizard :open] false)}]
-     [:div.modal-content
-      [:div.card
-       [:div.card-header [:p.card-header-title "Wizard"]]
-       [:div.card-content
-        [render-steps (:step @*wizard) @*state]]
-       [:div.block.has-text-centered
-        (case (:step @*wizard)
-          1 [:div [:p "Please choose jikaze (sit wind)"] 
-             [wind-keyboard *state theme :jikaze]]
-          2 [:div [:p "Please choose bakaze (turn wind)"]
-             [wind-keyboard *state theme :bakaze]]
-          3 [:div [:p "Please choose dorahyouji (dora indicator)"]
-             [dorahyouji-keyboard *state theme hand]
-             [widget/dorahyouji *state hand]]
-          4 [:div [:p "Please enter concealed tiles (anpai)"]
-             [closed-hand-keyboard *state theme hand]
-             [widget/hand-render theme hand remove-from-hand]]
-          5 [:div [:p "Please enter pon"]
-             [pon-keyboard *state theme hand]
-             [widget/hand-render theme hand remove-from-hand]]
-          6 [:div [:p "Please enter chii"]
-             [chii-keyboard *state theme hand]
-             [widget/hand-render theme hand remove-from-hand]]
-          7 [:div [:p "Please enter kan"]
-             [ankan-keyboard *state theme hand]
-             [widget/hand-render theme hand remove-from-hand]]
-          8 [:div [:p "Please enter concealed kan (ankan)"]
-             [kan-keyboard *state theme hand]
-             [widget/hand-render theme hand remove-from-hand]]
-          9 [:div [:p "Please enter agaripai"]
-             [agaripai-keyboard *state theme hand]
-             [widget/agaripai-view *state (:agaripai hand)]]
-          (swap! *state assoc-in [:wizard :step] 1))]
-       [render-nav *state (:step @*wizard)]]]
-     [:button.modal-close.is-large {:aria-label "close"
-                                    :on-click close!}]]))
+    (when (:open @*wizard)
+      [:div#wizard.modal.is-active
+       [:div.modal-background {:on-click close!}]
+       [:div.modal-content
+        [:div.card
+         [:div.card-header [:p.card-header-title "Wizard"]]
+         [:div.card-content
+          [render-steps (:step @*wizard) @*state]]
+         [:div.block.has-text-centered
+          (case (:step @*wizard)
+            1 [:div [:p "Please choose jikaze (sit wind)"] 
+               [wind-keyboard *state theme :jikaze]]
+            2 [:div [:p "Please choose bakaze (turn wind)"]
+               [wind-keyboard *state theme :bakaze]]
+            3 [:div [:p "Please choose dorahyouji (dora indicator)"]
+               [dorahyouji-keyboard *state theme hand]
+               [widget/dorahyouji *state hand]]
+            4 [:div [:p "Please enter concealed tiles (anpai)"]
+               [closed-hand-keyboard *state theme hand]
+               [widget/hand-render theme hand remove-from-hand]]
+            5 [:div [:p "Please enter pon"]
+               [pon-keyboard *state theme hand]
+               [widget/hand-render theme hand remove-from-hand]]
+            6 [:div [:p "Please enter chii"]
+               [chii-keyboard *state theme hand]
+               [widget/hand-render theme hand remove-from-hand]]
+            7 [:div [:p "Please enter kan"]
+               [ankan-keyboard *state theme hand]
+               [widget/hand-render theme hand remove-from-hand]]
+            8 [:div [:p "Please enter concealed kan (ankan)"]
+               [kan-keyboard *state theme hand]
+               [widget/hand-render theme hand remove-from-hand]]
+            9 [:div [:p "Please enter agaripai"]
+               [agaripai-keyboard *state theme hand]
+               [widget/agaripai-view *state (:agaripai hand)]]
+            (swap! *state assoc-in [:wizard :step] 1))]
+         [render-nav *state (:step @*wizard)]]]
+       [:button.modal-close.is-large {:aria-label "close"
+                                      :on-click close!}]])))
