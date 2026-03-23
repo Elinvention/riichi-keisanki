@@ -166,17 +166,27 @@
    [wizard/render *state]
    ])
 
-(defonce root-interactive (createRoot (gdom/getElement "interactive")))
-(defonce root-results (createRoot (gdom/getElement "results")))
-(defonce root-history (createRoot (gdom/getElement "history")))
+(defn root-render []
+  [:<>
+   [:section.hero
+    [:div#interactive
+     [app-render]]]
+   [:section.section
+    [:h2.title.is-2 "Results"]
+    [:div#results
+     [results-render]]]
+   [:section.section
+    [:h2.title.is-2 "History"]
+    [:div#history
+     [history/render (:theme @*state) widget/hand-render restore-hand!]]]])
+
+(defonce root-app (createRoot (gdom/getElement "app")))
 
 (defn init
   []
   (audio/play-tile-down-sfx)
   (history/init!)
-  (.render root-interactive (r/as-element [app-render]))
-  (.render root-results (r/as-element [results-render]))
-  (.render root-history (r/as-element [(partial history/render (:theme @*state) widget/hand-render restore-hand!)])))
+  (.render root-app (r/as-element [root-render])))
 
 #_{:clojure-lsp/ignore [:clojure-lsp/unused-public-var]}
 (defn ^:dev/after-load re-render
