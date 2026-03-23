@@ -8,14 +8,15 @@
    [riichi-calc.ui.reagent.svg :as svg]
    [riichi-calc.yakudb :refer [yakudb]]))
 
-(defn radio-group [options value on-change]
+(defn radio-group [group-name options value on-change]
   [:div.radios
    (for [option options]
      ^{:key option} [:label.radio
                      [:input {:type :radio
-                              :name (name option)
+                              :name group-name
+                              :value (name option)
                               :checked (= option value)
-                              :on-change #(on-change option)}]
+                              :on-change (fn [_] (on-change option))}]
                      (s/capitalize (name option))])])
 
 (defn checkboxes [boxes on-change]
@@ -24,7 +25,7 @@
          :let [bname (get (val box) :name)
                checked (get (val box) :checked)
                disabled (get (val box) :disabled)
-               closure #(on-change (key box) (not checked))]]
+               closure (fn [_] (on-change (key box) (not checked)))]]
      ^{:key (str bname (val box))}
      [:label.checkbox.mr-2
       [:input {:type :checkbox
@@ -41,18 +42,39 @@
       (assoc-in plain-tile [1 :on-click] #(update-state-fn! *state tile))
       (update-in plain-tile [1 :style] assoc :opacity "50%"))))
 
-(defn keyboard [*state theme tiles enabled? update-state-fn!]
+;; (defn- tile-text-button [text theme on-click]
+;;   [:div.tile-button
+;;    (as-> (svg/front-tile-bg theme) tile
+;;      (conj svg/tile-container tile)
+;;      (assoc-in tile [1 :on-click] on-click)
+;;      (conj tile [:text {:x 10 :y 30} text]))])
+
+(defn keyboard-mode-render [*state theme]
+  [:div
+   ;; [:div.tile-row
+   ;;  (for [k [:an :chii :pon :kan :ankan :dorahyouji :agaripai]]
+   ;;    ^{:key (str "keyboard-mode" theme k)}
+   ;;    [tile-text-button (name k) theme #(swap! *state assoc :keyboard-mode k)])]
+   [:fieldset#keyboard-mode.field [:legend "Keyboard mode:"]
+    (radio-group "keyboard-mode"
+                 [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
+                 (:keyboard-mode @*state)
+                 #(swap! *state assoc :keyboard-mode %1))]])
+
+(defn keyboard [*state theme tiles enabled? update-state-fn! & children]
   (let [key-tiles (for [tile tiles
                         :let [enabled (enabled? tile)]]
                     ^{:key (str (svg/url theme tile) enabled)}
                     [(partial keyboard-key *state update-state-fn!) theme tile enabled])]
-    [:div.keyboard
-     (for [tile-row (partition 10 10 nil key-tiles)]
-       ^{:key tile-row} [:span.tile-row tile-row])]))
+    (into [:div.keyboard
+           (for [tile-row (partition 10 10 nil key-tiles)]
+             ^{:key tile-row} [:span.tile-row tile-row])]
+          children)))
 
 (defn agari [*state agari]
   [:fieldset.field [:legend "Agari:"]
-   (radio-group [:tsumo :ron]
+   (radio-group "agari"
+                [:tsumo :ron]
                 agari
                 #(swap! *state assoc-in [:hand :agari] %1))])
 

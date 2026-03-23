@@ -22,22 +22,16 @@
 (defn settings-render []
   [:div#settings.field
    [:fieldset.field [:legend "Theme"]
-    [widget/radio-group [:regular :black] (:theme @*state) #(swap! *state assoc :theme %)]]
+    [widget/radio-group "theme" [:regular :black] (:theme @*state) #(swap! *state assoc :theme %)]]
    [:fieldset.field [:legend "Yaku Names Language"]
-    [widget/radio-group [:ja :romaji :it :en] (:language @*state) #(swap! *state assoc :language %)]]])
-
-(defn keyboard-mode-render []
-   [:fieldset#keyboard-mode.field [:legend "Keyboard mode:"]
-    (widget/radio-group [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
-                 (:keyboard-mode @*state)
-                 #(swap! *state assoc :keyboard-mode %1))])
+    [widget/radio-group "language" [:ja :romaji :it :en] (:language @*state) #(swap! *state assoc :language %)]]])
 
 (defn keyboard-render []
   (let [{:keys [keyboard-mode hand theme]} @*state 
         enabled? (partial common-state/can-input? keyboard-mode hand)]
     [:div.field
-     [widget/keyboard *state theme tile/all-34-tiles-with-redfives enabled? state/keyboard-input!]
-     [keyboard-mode-render theme]]))
+     [widget/keyboard *state theme tile/all-34-tiles-with-redfives enabled? state/keyboard-input!
+      [widget/keyboard-mode-render *state theme]]]))
 
 (defn- advance-wind [wind]
   (swap! *state update-in [:hand wind] tile/wind-next))
