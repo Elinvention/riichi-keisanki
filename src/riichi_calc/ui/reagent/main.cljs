@@ -12,19 +12,13 @@
    [riichi-calc.ui.reagent.history :as history]
    [riichi-calc.ui.reagent.wizard :as wizard]
    [riichi-calc.ui.reagent.widget :as widget]
+   [riichi-calc.ui.reagent.settings :as settings]
    [riichi-calc.ui.reagent.reagentState :as state]
    [riichi-calc.ui.reagent.svg :as svg]))
 
 ;(enable-console-print!)
 
 (defonce *state (r/atom state/initial-state))
-
-(defn settings-render []
-  [:div#settings.field
-   [:fieldset.field [:legend "Theme"]
-    [widget/radio-group "theme" [:regular :black] (:theme @*state) #(swap! *state assoc :theme %)]]
-   [:fieldset.field [:legend "Yaku Names Language"]
-    [widget/radio-group "language" [:ja :romaji :it :en] (:language @*state) #(swap! *state assoc :language %)]]])
 
 (defn keyboard-render []
   (let [{:keys [keyboard-mode hand theme]} @*state 
@@ -49,7 +43,8 @@
 (defn buttons []
   [:div.field.buttons
    [:button.button.is-info {:on-click wizard/open!} "Wizard"]
-   [:button.button.is-primary {:on-click new-hand!} "New hand"]])
+   [:button.button.is-primary {:on-click new-hand!} "New hand"]
+   [:button.button.is-light {:on-click settings/open!} "Settings"]])
 
 (defn hand-wind-agaripai-dorahyouji [theme hand]
   [:div#hand-properties.field
@@ -162,9 +157,10 @@
    [keyboard-render]
    [hand-properties-render]
    [notation-render]
-   [settings-render]
+   [settings/render *state]
    [wizard/render *state]
    ])
+
 
 (defn root-render []
   [:<>
