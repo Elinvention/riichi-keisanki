@@ -180,6 +180,7 @@
 
 (defn init
   []
+  (settings/load-settings! *state)
   (audio/play-tile-down-sfx)
   (history/init!)
   (.render root-app (r/as-element [root-render])))
