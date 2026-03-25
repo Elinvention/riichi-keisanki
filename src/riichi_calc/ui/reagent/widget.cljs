@@ -180,7 +180,7 @@
     [hand-group theme tiles on-click :min i]))
 
 (defn hand-render [theme hand on-click]
-  [:div.hand 
+  [:div.field.notification.hand 
    (concat (hand-an-render theme hand on-click)
            (hand-min-render theme hand on-click))])
 
