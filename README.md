@@ -16,14 +16,22 @@ the web (this version should run even on Android).
 1. Clone this repo with submodules:
 `git clone --recurse-submodules https://github.com/Elinvention/riichi-keisanki.git`
 2. Depending on which GUI you want:
-    - Run `clj -Xmain` to launch the cljfx GUI.
-    - Run `clj -M --main cljs.main --compile reagent.core --repl` to launch an
+    - Run `clj -Xmain` to launch the cljfx GUI (old GUI, not recommended).
+    - Run `npm install && npx shadow-cljs watch app` to launch an
     interactive REPL and a web browser with the reagent GUI.
-
-It can take a while to start as it has to compile initially.
 
 [cljfx]: https://github.com/cljfx/cljfx/
 [reagent]: https://github.com/reagent-project/reagent
+
+## Testing
+
+Run `npx shadow-cljs compile test` to build and automatically launch tests.
+
+## Contributing
+
+Pull requests are always welcome.
+For major changes, please open an issue first to discuss what you would like to
+change.
 
 ## License
 
