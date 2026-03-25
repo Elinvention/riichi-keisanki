@@ -236,15 +236,39 @@
                cell-content]))])]]]))
 
 (defn results-table-render [lang {:keys [yakus han fu score]}]
-  [:table.table.is-hoverable [:thead [:tr [:th "Yaku Name"] [:th "Han Value"]]]
-   [:tbody
+  [:div.box
+   [:nav.level
     (for [yaku yakus
           :let [wiki (get-in yakudb [(key yaku) :wiki])
-                name (get-in yakudb [(key yaku) :name lang] (s/capitalize (name (key yaku))))]]
+                name (get-in yakudb [(key yaku) :name lang] (s/capitalize (name (key yaku))))
+                value (if (integer? (val yaku))
+                        (val yaku)
+                        (s/capitalize (name (val yaku))))]]
       ^{:key (str (key yaku) (val yaku))}
-      [:tr [:td (if (nil? wiki) name [:a {:href wiki :target "_blank"} name])] [:td (val yaku)]])
-    [:tr.value [:td "Value"] [:td (hand/string-of-value han fu)]]
-    [:tr.score [:td "Score"] [:td (hand/string-of-score score)]]]])
+      [:div.level-item.has-text-centered
+       [:div
+        [:p.heading (if (nil? wiki) name [:a {:href wiki :target "_blank"} name])]
+        [:p.title value]]])]
+   [:hr]
+   [:nav.level
+    (if (:yakuman han)
+      [:div.level-item.has-text-centered
+       [:div
+        [:p.heading "Han"]
+        [:p.title (hand/string-of-value han fu)]]]
+      [:<>
+       [:div.level-item.has-text-centered
+        [:div
+         [:p.heading "Han"]
+         [:p.title (:regular han)]]]
+       [:div.level-item.has-text-centered {:title (hand/explain-minipoints fu)}
+        [:div
+         [:p.heading "Fu"]
+         [:p.title (hand/final-minipoints fu)]]]])
+    [:div.level-item.has-text-centered
+     [:div
+      [:p.heading "Score"]
+      [:p.title (hand/string-of-score score)]]]]])
 
 (defn speech-of-result [lang {:keys [yakus score]}]
   (str
