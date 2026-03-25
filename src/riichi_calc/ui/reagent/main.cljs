@@ -4,7 +4,6 @@
    [clojure.string :as s]
    [goog.dom :as gdom]
    [reagent.core :as r]
-   [riichi-calc.group :as group]
    [riichi-calc.hand :as hand]
    [riichi-calc.state :as common-state]
    [riichi-calc.tile :as tile]
@@ -23,9 +22,10 @@
 (defn keyboard-render []
   (let [{:keys [keyboard-mode hand theme]} @*state 
         enabled? (partial common-state/can-input? keyboard-mode hand)]
-    [:div.field
-     [widget/keyboard *state theme tile/all-34-tiles-with-redfives enabled? state/keyboard-input!
-      [widget/keyboard-mode-render *state theme]]]))
+    [:div.field.flex-center
+     [widget/keyboard *state theme tile/all-34-tiles-with-redfives enabled? state/keyboard-input!]
+     [widget/keyboard-mode-render *state theme]
+     [widget/notation *state]]))
 
 (defn- advance-wind [wind]
   (swap! *state update-in [:hand wind] tile/wind-next))
@@ -100,53 +100,6 @@
       :tenpai (result-tenpai theme res)
       :winning (result-win language res))))
 
-(defn from-notation-min [notation-min]
-  (filter (some-fn group/tris? group/quad? group/straight?)
-          (hand/grouped-tiles (hand/from-notation notation-min))))
-
-(defn cljs-copy-to-clipboard
-  "navigator.clipboard.writeText(text).then(function() {
-    console.log('Async: Copying to clipboard was successful!');
-  }, function(err) {
-    console.error('Async: Could not copy text: ', err);
-  });"
-  [text]
-  (. (js/navigator.clipboard.writeText text) then
-         #(println "Copying to clipboard was successful!")
-         #(println "Could not copy text: " %1)))
-
-(defn notation-render []
-  (let [notation (r/atom "")
-        typing (r/atom false)]
-    (fn []
-      (let [{:keys [hand]} @*state
-            [notation-an notation-min] (s/split @notation "|")
-            hand-an (vec (hand/from-notation notation-an))
-            hand-min (vec (from-notation-min notation-min))
-            changed (or (not= (:an hand) hand-an) (not= (:min hand) hand-min))]
-        (when changed
-          (if @typing
-            (do
-              (swap! *state (fn [state]
-                              (-> state
-                                  (update :hand (fn [h] (assoc h :an hand-an :min hand-min)))
-                                  (update :keyboard-mode (partial common-state/next-keyboard-mode state)))))
-              (reset! typing false))
-            (reset! notation (hand/to-notation hand)))))
-      [:fieldset.field.has-addons
-       [:legend "Notation"]
-       [:div.control
-        [:input.input {:type :text
-                       :name "notation"
-                       :value @notation
-                       :onChange #(do (reset! notation (.. % -target -value)) (reset! typing true))}]]
-       [:div.control
-        [:input.button {:type :button
-                        :name "notation-copy"
-                        :value "Copy"
-                        :onClick #(cljs-copy-to-clipboard @notation)
-                        :disabled (empty? @notation)}]]])))
-
 (defn restore-hand! [hand]
   (swap! *state assoc :hand hand))
 
@@ -156,7 +109,6 @@
    [widget/hand-render (:theme @*state) (:hand @*state) (partial state/remove-from-hand! *state)]
    [keyboard-render]
    [hand-properties-render]
-   [notation-render]
    [settings/render *state]
    [wizard/render *state]
    ])

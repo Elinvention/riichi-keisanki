@@ -1,6 +1,7 @@
 (ns riichi-calc.ui.reagent.widget
   (:require
    [clojure.string :as s]
+   [reagent.core :as r]
    [riichi-calc.group :as group]
    [riichi-calc.hand :as hand]
    [riichi-calc.state :as state]
@@ -50,23 +51,22 @@
 ;;      (conj tile [:text {:x 10 :y 30} text]))])
 
 (defn keyboard-mode-render [*state theme]
-  [:div
-   ;; [:div.tile-row
-   ;;  (for [k [:an :chii :pon :kan :ankan :dorahyouji :agaripai]]
-   ;;    ^{:key (str "keyboard-mode" theme k)}
-   ;;    [tile-text-button (name k) theme #(swap! *state assoc :keyboard-mode k)])]
-   [:fieldset#keyboard-mode.field [:legend "Keyboard mode:"]
-    (radio-group "keyboard-mode"
-                 [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
-                 (:keyboard-mode @*state)
-                 #(swap! *state assoc :keyboard-mode %1))]])
+  ;; [:div.tile-row
+  ;;  (for [k [:an :chii :pon :kan :ankan :dorahyouji :agaripai]]
+  ;;    ^{:key (str "keyboard-mode" theme k)}
+  ;;    [tile-text-button (name k) theme #(swap! *state assoc :keyboard-mode k)])]
+  [:fieldset#keyboard-mode.field [:legend "Keyboard mode:"]
+   (radio-group "keyboard-mode"
+                [:an :chii :pon :kan :ankan :dorahyouji :agaripai]
+                (:keyboard-mode @*state)
+                #(swap! *state assoc :keyboard-mode %1))])
 
 (defn keyboard [*state theme tiles enabled? update-state-fn! & children]
   (let [key-tiles (for [tile tiles
                         :let [enabled (enabled? tile)]]
                     ^{:key (str (svg/url theme tile) enabled)}
                     [(partial keyboard-key *state update-state-fn!) theme tile enabled])]
-    (into [:div.keyboard
+    (into [:div.field.keyboard
            (for [tile-row (partition 10 10 nil key-tiles)]
              ^{:key tile-row} [:span.tile-row tile-row])]
           children)))
@@ -262,3 +262,54 @@
                   (audio/speak actual-lang speech)
                   (println "playing speech" speech)))
     :value "Play results speech ▶️"}])
+
+(defn- from-notation-min [notation-min]
+  (filter (some-fn group/tris? group/quad? group/straight?)
+          (hand/grouped-tiles (hand/from-notation notation-min))))
+
+(defn- cljs-copy-to-clipboard
+  "navigator.clipboard.writeText(text).then(function() {
+    console.log('Async: Copying to clipboard was successful!');
+  }, function(err) {
+    console.error('Async: Could not copy text: ', err);
+  });"
+  [text]
+  (. (js/navigator.clipboard.writeText text) then
+     #(println "Copying to clipboard was successful!")
+     #(println "Could not copy text: " %1)))
+
+(defn copy-button [value]
+  [:div.control
+   [:input.button {:type :button
+                   :name "notation-copy"
+                   :value "Copy"
+                   :onClick #(cljs-copy-to-clipboard value)
+                   :disabled (empty? value)}]])
+
+(defn notation [*state]
+  (let [notation (r/atom "")
+        typing (r/atom false)]
+    (fn []
+      (let [{:keys [hand]} @*state
+            [notation-an notation-min] (s/split @notation "|")
+            hand-an (vec (hand/from-notation notation-an))
+            hand-min (vec (from-notation-min notation-min))
+            changed (or (not= (:an hand) hand-an) (not= (:min hand) hand-min))]
+        (when changed
+          (if @typing
+            (do
+              (swap! *state (fn [state]
+                              (-> state
+                                  (update :hand (fn [h] (assoc h :an hand-an :min hand-min)))
+                                  (update :keyboard-mode (partial state/next-keyboard-mode state)))))
+              (reset! typing false))
+            (reset! notation (hand/to-notation hand)))))
+      [:fieldset.field.has-addons
+       [:legend "Notation"]
+       [:div.control
+        [:input.input {:type :text
+                       :name "notation"
+                       :value @notation
+                       :onChange #(do (reset! notation (.. % -target -value)) (reset! typing true))}]]
+       [copy-button @notation]])))
+
