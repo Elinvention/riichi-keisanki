@@ -20,6 +20,7 @@ do
         env -i git -C $bdir reset --hard origin/$branch
         env -i git -C $bdir submodule update --init
     else
+        rm -rf "$bdir"
         env -i git clone --recurse-submodules $BARE_REPO $bdir -b $branch
     fi
 done
@@ -27,24 +28,19 @@ done
 while read oldrev newrev refname
 do
     branch=$(env -i git -C $BARE_REPO rev-parse --symbolic --abbrev-ref $refname)
-    if [ "main" = "$branch" ]; then
-        subdir=""
-    else
-        subdir="$branch"
-    fi
 
-    pushd "$WORKING_DIRECTORY/$subdir"
+    pushd "$WORKING_DIRECTORY/$branch"
 
     echo "Running npm install..."
     npm install
     echo "Compiling with shdow-cljs..."
     #clj -M -m cljs.main --optimizations advanced -c riichi-calc.reagent
-    npx shadow-cljs release app
+    BUILD_SHA=${newrev:0:7} npm run build
     echo "Copying files..."
-    rm -rf $PUBLIC_WWW/$subdir/
-    mkdir -p $PUBLIC_WWW/$subdir/
-    cp -rL resources/public/* $PUBLIC_WWW/$subdir/
+    rm -rf $PUBLIC_WWW/$branch/
+    mkdir -p $PUBLIC_WWW/$branch/
+    cp -rL resources/public/* $PUBLIC_WWW/$branch/
 
-    echo -e "branch: $branch\nrev: $newrev\nbuild date: $(date)" > $PUBLIC_WWW/$subdir/VERSION
+    echo -e "branch: $branch\nrev: $newrev\nbuild date: $(date)" > $PUBLIC_WWW/$branch/VERSION
     popd
 done

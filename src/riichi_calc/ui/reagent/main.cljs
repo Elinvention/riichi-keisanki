@@ -19,6 +19,39 @@
 
 (defonce *state (r/atom state/initial-state))
 
+(goog-define VERSION "0.0.0")
+(goog-define BUILD-SHA "UNKNOWN")
+(goog-define BUILD-DATE "UNKNOWN")
+
+(defn- glossary-component []
+  [:section.section
+   [:h2.title.is-2 "Glossary"]
+   [:ul
+    [:li "Bakaze 場風 turn wind"]
+    [:li "Jikaze 自風 (own) seat wind"]
+    [:li "Dorahyoji ドラ表示 dora indicator"]
+    [:li "Agari 和がり generic call for winning a hand"]
+    [:li "Agaripai 和了り牌 winning tile"]
+    [:li "Ron 栄 win by deal in"]
+    [:li "Tsumo 自摸 win by self draw"]
+    [:li "An 暗 \"dark\" concealed tiles"]
+    [:li "Pon ポン call for open triplet"]
+    [:li "Chii チイ call for open straight"]
+    [:li "Kan 槓 call for open quad"]
+    [:li "Ankan 暗槓 call for concealed kan"]
+    [:li "Akadora 赤ドラ red fives"]]
+   [:p "For more information visit the " [:a {:href "https://riichi.wiki/"} "Riichi Wiki"] "."]])
+
+(defn- footer-component []
+  [:footer
+   [:p (str "riichi-keisanki version " VERSION " (" BUILD-SHA " - " BUILD-DATE ") "
+            "Copyright © 2022 Elia Argentieri. ")]
+   [:p "Source code on "
+    [:a {:href "https://github.com/Elinvention/riichi-keisanki" :target "_blank"} "Github"]
+    " and on "
+    [:a {:href "https://code.elinvention.ovh/Elinvention/riichi-keisanki" :target "_blank"} "my gitea instance"] "."]
+   [:p "Mahjong tiles by " [:a {:href "https://github.com/FluffyStuff/riichi-mahjong-tiles/" :target "_blank"} "FluffyStuff"] "."]])
+
 (defn keyboard-render []
   (let [{:keys [keyboard-mode hand theme]} @*state 
         enabled? (partial common-state/can-input? keyboard-mode hand)]
@@ -110,8 +143,7 @@
    [keyboard-render]
    [hand-properties-render]
    [settings/render *state]
-   [wizard/render *state]
-   ])
+   [wizard/render *state]])
 
 
 (defn root-render []
@@ -126,7 +158,9 @@
    [:section.section
     [:h2.title.is-2 "History"]
     [:div#history
-     [history/render (:theme @*state) widget/hand-render restore-hand!]]]])
+     [history/render (:theme @*state) widget/hand-render restore-hand!]]]
+   [glossary-component]
+   [footer-component]])
 
 (defonce root-app (createRoot (gdom/getElement "app")))
 

@@ -8,7 +8,10 @@
                 :output-dir "resources/public/assets/js"
                 ; The relative path from web server’s root to the resources in :output-dir
                 :asset-path "/assets/js"
-                :modules {:main {:init-fn riichi-calc.ui.reagent.main/init}}}
+                :modules {:main {:init-fn riichi-calc.ui.reagent.main/init}}
+                :closure-defines {riichi-calc.ui.reagent.main/VERSION "0.0.0"
+                                  riichi-calc.ui.reagent.main/BUILD-SHA "UNKNOWN"
+                                  riichi-calc.ui.reagent.main/BUILD-DATE "UNKNOWN"}}
           :test {:target :node-test
                  :output-dir "out/test"
                  :output-to "out/test.js"

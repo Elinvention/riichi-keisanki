@@ -17,10 +17,31 @@ There is also an outdated `cljfx` GUI.
 npm install
 
 # Compile cljs to JS once
-shadow build
+npx shadow-cljs build
 
 # Start dev server on :app build (port 8020)
-shadow watch app
+npx shadow-cljs watch app
+```
+
+### Versioning & Production Builds
+
+The project uses semantic versioning and injects build information (SHA and Date) into the UI.
+
+```bash
+# Production build with versioning
+npm run build
+```
+
+This command uses `shadow-cljs release` with `--config-merge` to inject:
+- `VERSION`: From `package.json`
+- `BUILD-SHA`: Current git commit SHA (can be overridden by `BUILD_SHA` env var)
+- `BUILD-DATE`: Current date
+
+In ClojureScript, these are accessed via `goog-define` in `riichi-calc.ui.reagent.main`:
+```clojure
+(goog-define VERSION "0.0.0")
+(goog-define BUILD-SHA "UNKNOWN")
+(goog-define BUILD-DATE "UNKNOWN")
 ```
 
 ### Testing
@@ -33,14 +54,14 @@ npx shadow-cljs compile test
 
 ```bash
 # Compile all builds
-shadow build
+npx shadow-cljs build
 
 # Watch and compile
-shadow watch
+npx shadow-cljs watch
 
 # Clean rebuild
 rm -rf target/ resource/public/assets/js/*
-shadow build
+npx shadow-cljs build
 ```
 
 ---

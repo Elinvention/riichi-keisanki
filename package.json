@@ -1,13 +1,14 @@
 {
   "name": "riichi-keisanki",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Riichi Mahjong calculator",
   "main": "index.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "shadow-cljs release app --config-merge \"{:closure-defines {riichi-calc.ui.reagent.main/VERSION \\\"$npm_package_version\\\" riichi-calc.ui.reagent.main/BUILD-SHA \\\"${BUILD_SHA:-$(git rev-parse --short HEAD)}\\\" riichi-calc.ui.reagent.main/BUILD-DATE \\\"$(date +%Y-%m-%d)\\\"} }\""
   },
   "repository": {
     "type": "git",
