@@ -66,6 +66,13 @@ npx shadow-cljs build
 
 ---
 
+## git 
+
+When a commit is pushed, the remote server will build and deploy the app via a
+post-receive hook, a copy of which is available in /post-receive.
+
+---
+
 ## Code Style Guidelines
 
 ### Imports
