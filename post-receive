@@ -39,7 +39,7 @@ do
     echo "Copying files..."
     rm -rf $PUBLIC_WWW/$branch/
     mkdir -p $PUBLIC_WWW/$branch/
-    cp -rL resources/public/* $PUBLIC_WWW/$branch/
+    cp -rL dist/* $PUBLIC_WWW/$branch/
 
     echo -e "branch: $branch\nrev: $newrev\nbuild date: $(date)" > $PUBLIC_WWW/$branch/VERSION
     popd

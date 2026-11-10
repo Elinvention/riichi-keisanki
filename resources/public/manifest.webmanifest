@@ -7,15 +7,15 @@
     "background_color": "#fff",
     "description": "A Riichi Mahjong companion app.",
     "icons": [{
-      "src": "/assets/icons/icon.svg",
+      "src": "assets/icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }, {
-        "src": "/assets/icons/icon.png",
+        "src": "assets/icons/icon.png",
         "sizes": "128x128",
         "type": "image/png"
     }, {
-        "src": "/assets/icons/icon.webp",
+        "src": "assets/icons/icon.webp",
         "sizes": "128x128",
         "type": "image/webp"
     }]

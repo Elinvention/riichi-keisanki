@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "shadow-cljs release app --config-merge \"{:closure-defines {riichi-calc.ui.reagent.main/VERSION \\\"$npm_package_version\\\" riichi-calc.ui.reagent.main/BUILD-SHA \\\"${BUILD_SHA:-$(git rev-parse --short HEAD)}\\\" riichi-calc.ui.reagent.main/BUILD-DATE \\\"$(date +%Y-%m-%d)\\\"} }\""
+    "build": "shadow-cljs release app --config-merge \"{:closure-defines {riichi-calc.ui.reagent.main/VERSION \\\"$npm_package_version\\\" riichi-calc.ui.reagent.main/BUILD-SHA \\\"${BUILD_SHA:-$(git rev-parse --short HEAD)}\\\" riichi-calc.ui.reagent.main/BUILD-DATE \\\"$(date +%Y-%m-%d)\\\"} }\" && node scripts/fingerprint.mjs"
   },
   "repository": {
     "type": "git",

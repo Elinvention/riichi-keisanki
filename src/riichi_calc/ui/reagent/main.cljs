@@ -287,11 +287,25 @@
 
 (defonce root-app (createRoot (gdom/getElement "app")))
 
+(defn- register-service-worker!
+  []
+  (when (exists? js/navigator.serviceWorker)
+    (let [had-controller? (some? (.-controller js/navigator.serviceWorker))
+          reloaded (atom false)]
+      (.addEventListener js/navigator.serviceWorker "controllerchange"
+                         (fn [_]
+                           (when (and had-controller? (not @reloaded))
+                             (reset! reloaded true)
+                             (.reload js/location))))
+      (-> (.register js/navigator.serviceWorker "sw.js" #js {:updateViaCache "none"})
+          (.catch (fn [err] (js/console.warn "Service worker registration failed:" err)))))))
+
 (defn init
   []
   (settings/load-settings! *state)
   (audio/play-tile-down-sfx)
   (history/init!)
+  (register-service-worker!)
   (.render root-app (r/as-element [root-render])))
 
 #_{:clojure-lsp/ignore [:clojure-lsp/unused-public-var]}
