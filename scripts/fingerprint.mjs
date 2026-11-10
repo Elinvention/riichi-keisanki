@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 import {
   cpSync,
+  existsSync,
   readdirSync,
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -36,19 +38,30 @@ function shortHash(file) {
 }
 
 function findMainJs() {
-  const hashed = readdirSync(jsDir).filter((f) => /^main\.[0-9A-Za-z]+\.js$/.test(f));
-  if (hashed.length === 0) {
+  const manifestPath = join(jsDir, "manifest.edn");
+  if (existsSync(manifestPath)) {
+    const match = readFileSync(manifestPath, "utf8").match(/main\.[0-9A-Za-z]+\.js/);
+    if (match && existsSync(join(jsDir, match[0]))) return match[0];
+  }
+  const candidates = readdirSync(jsDir)
+    .filter((f) => /^main\.[0-9A-Za-z]+\.js$/.test(f))
+    .map((f) => ({ f, mtime: statSync(join(jsDir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime);
+  if (candidates.length === 0) {
     throw new Error(
       `no hashed main.<hash>.js found in ${jsDir}; run "shadow-cljs release app" first`,
     );
   }
-  if (hashed.length > 1) {
-    throw new Error(`multiple hashed main bundles found: ${hashed.join(", ")}`);
-  }
-  return hashed[0];
+  return candidates[0].f;
 }
 
 const mainJs = findMainJs();
+
+for (const f of readdirSync(jsDir)) {
+  if (f !== mainJs && /^main\.[0-9A-Za-z]+\.js$/.test(f)) {
+    rmSync(join(jsDir, f), { force: true });
+  }
+}
 
 const cssSource = join(publicDir, "assets", "css");
 const bulmaHash = shortHash(join(cssSource, "bulma.css"));
