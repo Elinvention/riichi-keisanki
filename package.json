@@ -1,6 +1,6 @@
 {
   "name": "riichi-keisanki",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Riichi Mahjong calculator",
   "main": "index.js",
   "directories": {
