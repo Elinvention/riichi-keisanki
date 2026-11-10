@@ -15,7 +15,8 @@
 (def initial-state (->ReagentState (hand/hand) :an :regular :romaji))
 
 (defn reset-initial! [*state]
-  (reset! *state initial-state))
+  (swap! *state (fn [st]
+                  (assoc st :hand (hand/hand) :keyboard-mode :an))))
 
 (defn remove-from-hand! [*state path index]
   (swap! *state update :hand hand/remove-from-hand path index))

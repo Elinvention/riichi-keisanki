@@ -34,6 +34,12 @@
         flex-wrap: wrap;
         align-items: flex-start;
       }
+      @media screen and (max-width: 768px) {
+        #player-scores {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
       .mahjong-tile {
         max-width: 9vw;
         max-height: 64px;

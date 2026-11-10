@@ -240,14 +240,14 @@
    [:nav.level
     (for [yaku yakus
           :let [wiki (get-in yakudb [(key yaku) :wiki])
-                name (get-in yakudb [(key yaku) :name lang] (s/capitalize (name (key yaku))))
+                yaku-name (get-in yakudb [(key yaku) :name lang] (s/capitalize (name (key yaku))))
                 value (if (integer? (val yaku))
                         (val yaku)
                         (s/capitalize (name (val yaku))))]]
       ^{:key (str (key yaku) (val yaku))}
       [:div.level-item.has-text-centered
        [:div
-        [:p.heading (if (nil? wiki) name [:a {:href wiki :target "_blank"} name])]
+        [:p.heading (if (nil? wiki) yaku-name [:a {:href wiki :target "_blank"} yaku-name])]
         [:p.title value]]])]
    [:hr]
    [:nav.level

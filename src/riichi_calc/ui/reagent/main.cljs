@@ -1,23 +1,24 @@
 (ns riichi-calc.ui.reagent.main
   (:require
-   ["react-dom/client" :refer [createRoot]] 
-   [clojure.string :as s]
+   ["react-dom/client" :refer [createRoot]]
    [goog.dom :as gdom]
    [reagent.core :as r]
+   [riichi-calc.game :as game]
    [riichi-calc.hand :as hand]
    [riichi-calc.state :as common-state]
    [riichi-calc.tile :as tile]
    [riichi-calc.ui.reagent.audio :as audio]
+   [riichi-calc.ui.reagent.game :as ui-game]
    [riichi-calc.ui.reagent.history :as history]
-   [riichi-calc.ui.reagent.wizard :as wizard]
-   [riichi-calc.ui.reagent.widget :as widget]
-   [riichi-calc.ui.reagent.settings :as settings]
    [riichi-calc.ui.reagent.reagentState :as state]
-   [riichi-calc.ui.reagent.svg :as svg]))
+   [riichi-calc.ui.reagent.svg :as svg]
+   [riichi-calc.ui.reagent.widget :as widget]
+   [riichi-calc.ui.reagent.wizard :as wizard]
+   [riichi-calc.ui.reagent.settings :as settings]))
 
 ;(enable-console-print!)
 
-(defonce *state (r/atom state/initial-state))
+(defonce *state (r/atom (merge state/initial-state game/initial-state {:winner nil :looser nil})))
 
 (goog-define VERSION "0.0.0")
 (goog-define BUILD-SHA "UNKNOWN")
@@ -53,52 +54,160 @@
    [:p "Mahjong tiles by " [:a {:href "https://github.com/FluffyStuff/riichi-mahjong-tiles/" :target "_blank"} "FluffyStuff"] "."]])
 
 (defn keyboard-render []
-  (let [{:keys [keyboard-mode hand theme]} @*state 
+  (let [{:keys [keyboard-mode hand theme language]} @*state
         enabled? (partial common-state/can-input? keyboard-mode hand)]
     [:div.field.flex-center
      [widget/keyboard *state theme tile/all-34-tiles-with-redfives enabled? state/keyboard-input!]
      [widget/keyboard-mode-render *state theme]
-     [widget/notation *state]]))
+     [widget/notation *state]
+     [widget/extra-yaku *state (:extra-yaku hand) language]
+     [widget/extra *state (get-in hand [:extra :dora]) (get-in hand [:extra :yaku])]]))
 
-(defn- advance-wind [wind]
-  (swap! *state update-in [:hand wind] tile/wind-next))
+(defn- advance-bakaze! []
+  (swap! *state (fn [st]
+                  (let [wind (tile/wind-next (get-in st [:round :wind]))]
+                    (-> st
+                        (assoc-in [:round :wind] wind)
+                        (assoc-in [:hand :bakaze] wind))))))
 
-(defn- wind-button [wind kind theme]
-  [:div.tile-button [:div (s/capitalize (name kind))]
-   (assoc-in (svg/tile theme wind) [1 :on-click] #(advance-wind kind))])
+(defn- bakaze-button [theme]
+  (let [wind (get-in @*state [:round :wind])]
+    [:div.tile-button [:div "Bakaze"]
+     (assoc-in (svg/tile theme (tile/wind wind)) [1 :on-click] advance-bakaze!)]))
+
+(defn change-player-name! [player-idx name]
+  (swap! *state assoc-in [:players player-idx :name] name))
+
+(defn scoring-hand [state]
+  (let [winner (js/parseInt (or (:winner state) (:dealer state) 0))]
+    (-> (:hand state)
+        (assoc :jikaze (game/player-wind state winner))
+        (assoc :bakaze (get-in state [:round :wind])))))
 
 (defn new-hand! []
-  (let [{:keys [hand]} @*state]
+  (let [{:keys [hand dealer round]} @*state
+        bakaze (:wind round)
+        jikaze (game/player-wind @*state dealer)]
     (history/save-hand! hand)
     (state/reset-initial! *state)
+    (swap! *state (fn [st]
+                    (-> st
+                        (assoc :winner nil :looser nil)
+                        (assoc-in [:hand :bakaze] bakaze)
+                        (assoc-in [:hand :jikaze] jikaze))))
     (wizard/restart!)))
 
-(defn buttons []
+(defn apply-score-and-reset! [result winner-idx looser-idx]
+  (let [st @*state
+        game-state {:players (:players st)
+                    :current-hand result}
+        agari (:agari (:hand st))]
+    (swap! *state assoc-in [:hand :jikaze] (game/player-wind st winner-idx))
+    (case agari
+      :ron (swap! *state assoc :players (:players (game/ron game-state winner-idx looser-idx)))
+      :tsumo (swap! *state assoc :players (:players (game/tsumo game-state winner-idx))))
+    (swap! *state assoc :dealer (game/next-dealer st winner-idx))
+    (new-hand!)))
+
+(defn tsumo-select! [winner-idx]
+  (swap! *state #(-> %
+                     (assoc :winner winner-idx :looser nil)
+                     (assoc-in [:hand :agari] :tsumo))))
+
+(defn ron-select! [winner-idx]
+  (swap! *state #(-> %
+                     (assoc :winner winner-idx :looser nil)
+                     (assoc-in [:hand :agari] :ron))))
+
+(defn ron-loser-select! [looser-idx]
+  (swap! *state assoc :looser looser-idx))
+
+(defn cancel-selection! []
+  (swap! *state #(dissoc % :winner :looser)))
+
+(defn selection-complete? [state]
+  (and (some? (:winner state))
+       (case (:agari (:hand state))
+         :tsumo true
+         :ron (some? (:looser state))
+         false)))
+
+(defn apply-selection! [result]
+  (let [st @*state
+        winner (:winner st)
+        looser (:looser st)]
+    (when (and (= :winning (:type result))
+               (selection-complete? st))
+      (apply-score-and-reset! result
+                              (js/parseInt winner)
+                              (when (some? looser) (js/parseInt looser))))))
+
+(defonce *confirm-reset (r/atom false))
+
+(defn reset-match! []
+  (swap! *state game/reset-match)
+  (state/reset-initial! *state)
+  (swap! *state #(-> %
+                     (assoc :winner nil :looser nil)
+                     (assoc-in [:hand :bakaze] (get-in % [:round :wind]))
+                     (assoc-in [:hand :jikaze] (game/player-wind % (:dealer %)))))
+  (reset! *confirm-reset false))
+
+(defn reset-match-modal []
+  (when @*confirm-reset
+    [:div#reset-match-modal.modal.is-active
+     [:div.modal-background {:on-click #(reset! *confirm-reset false)}]
+     [:div.modal-content
+      [:div.box
+       [:h2.title "Reset Match"]
+       [:p "Reset scores, round and dealer? This cannot be undone."]
+       [:div.field.is-grouped
+        [:button.button.is-danger {:on-click reset-match!} "Reset"]
+        [:button.button.is-light {:on-click #(reset! *confirm-reset false)} "Cancel"]]]]
+     [:button.modal-close.is-large {:aria-label "close"
+                                    :on-click #(reset! *confirm-reset false)}]]))
+
+(defn match-menu []
+  [:div.field.buttons
+   [:button.button.is-light {:on-click settings/open!} "Settings"]
+   [:button.button.is-danger.is-light {:on-click #(reset! *confirm-reset true)} "Reset Match"]])
+
+(defn hand-menu []
   [:div.field.buttons
    [:button.button.is-info {:on-click wizard/open!} "Wizard"]
-   [:button.button.is-primary {:on-click new-hand!} "New hand"]
-   [:button.button.is-light {:on-click settings/open!} "Settings"]])
+   [:button.button.is-primary {:on-click new-hand!} "New hand"]])
 
-(defn hand-wind-agaripai-dorahyouji [theme hand]
+(defn hand-agaripai-dorahyouji [theme hand]
   [:div#hand-properties.field
-   (wind-button (tile/wind (:bakaze hand)) :bakaze theme)
-   (wind-button (tile/wind (:jikaze hand)) :jikaze theme)
    (widget/agaripai-view *state (:agaripai hand))
    (widget/dorahyouji *state hand)])
 
 (defn hand-properties-render []
-  (let [{:keys [hand theme language]} @*state]
-    [:<>
-     [hand-wind-agaripai-dorahyouji theme hand]
-     [widget/agari *state (:agari hand)]
-     [widget/extra-yaku *state (:extra-yaku hand) language]
-     [widget/extra *state (get-in hand [:extra :dora]) (get-in hand [:extra :yaku])]]))
+  (let [{:keys [hand theme]} @*state]
+    [hand-agaripai-dorahyouji theme hand]))
+
+(defn selection-actions [result]
+  (let [st @*state
+        complete? (selection-complete? st)
+        winning? (= :winning (:type result))]
+    [:div.field.is-grouped
+     [:div.control
+      [:button.button.is-primary
+       {:disabled (not (and complete? winning?))
+        :on-click #(apply-selection! result)}
+       "Apply Score Change"]]
+     [:div.control
+      [:button.button.is-light
+       {:on-click cancel-selection!}
+       "Cancel"]]]))
 
 (defn result-win [lang {:keys [score] :as result}]
   [:<>
    [widget/button-play-results-speech lang result]
    [widget/results-table-render lang result]
-   [widget/score-table-render score]])
+   [widget/score-table-render score]
+   [selection-actions result]])
+
 
 (defn ukeire-tile [theme tile]
   [assoc-in (svg/tile theme tile) [1 :on-click]
@@ -125,7 +234,8 @@
       [agaripai-tile theme tile])]])
 
 (defn results-render []
-  (let [{:keys [hand theme language]} @*state
+  (let [{:keys [theme language] :as st} @*state
+        hand (scoring-hand st)
         {:keys [summary] :as res} (hand/results hand language)]
     (case (:type res)
       (:incomplete :invalid :no-yaku) [:p summary]
@@ -138,12 +248,25 @@
 
 (defn app-render []
   [:<>
-   [buttons]
+   [match-menu]
+   [bakaze-button (:theme @*state)]
+   [ui-game/player-scores
+    (:players @*state)
+    (:dealer @*state)
+    {:winner (:winner @*state)
+     :looser (:looser @*state)
+     :agari (get-in @*state [:hand :agari])
+     :on-name-change change-player-name!
+     :on-tsumo tsumo-select!
+     :on-ron ron-select!
+     :on-ron-loser ron-loser-select!}]
+   [hand-menu]
+   [hand-properties-render]
    [widget/hand-render (:theme @*state) (:hand @*state) (partial state/remove-from-hand! *state)]
    [keyboard-render]
-   [hand-properties-render]
    [settings/render *state]
-   [wizard/render *state]])
+   [wizard/render *state]
+   [reset-match-modal]])
 
 
 (defn root-render []

@@ -206,3 +206,67 @@
                        :romaji "Chinroutou"
                        :it "Tutti terminali"
                        :en "All terminals"}}})
+
+
+(def riichidb 
+  {:bakaze {:wiki "https://riichi.wiki/Jihai#Kazehai"
+            :name {:ja "場風"
+                   :romaji "bakaze"
+                   :it "vento del tavolo"
+                   :en "table wind"}}
+   :jikaze {:wiki "https://riichi.wiki/Jikaze"
+            :name {:ja "自風"
+                   :romaji "jikaze"
+                   :it "vento del giocatore"
+                   :en "seat wind"}}
+   :dorahyouji {:wiki "https://riichi.wiki/Wanpai#Dora"
+                :name {:ja "ドラ表示"
+                       :romaji "dorahyōji"
+                       :it "Indicatore di dora"
+                       :en "Dora indicator"}}
+   :agaripai {:wiki "https://riichi.wiki/Tenpai#Agari"
+              :name {:ja "和がり牌"
+                     :romaji "agaripai"
+                     :it "tessera vincente"
+                     :en "winning tile"}}
+   :agari {:wiki "https://riichi.wiki/Tenpai#Agari"
+           :name {:ja "和がり"
+                  :romaji "agari"
+                  :it "vincita"
+                  :en "win"}}
+   :tsumo {:wiki "https://riichi.wiki/Naki#Tsumo"
+           :name {:ja "自摸"
+                  :romaji "tsumo"
+                  :it "vincita per pescata"
+                  :en "self-draw"}}
+   :ron {:wiki "https://riichi.wiki/Naki#Ron"
+         :name {:ja "ロン"
+                :romaji "ron"
+                :it "vincita per scarto"
+                :en "win by discard"}}
+   :an {:wiki "https://riichi.wiki/List_of_terminology_by_alphabetical_order"
+        :name {:ja "暗"
+               :romaji "an"
+               :it "coperto"
+               :en "concealed"}}
+   :chii {:wiki "https://riichi.wiki/Naki#Chii"
+          :name {:ja "チー"
+                 :romaji "chī"
+                 :it "chī"
+                 :en "chī"}}
+   :pon {:wiki "https://riichi.wiki/Naki#Pon"
+         :name {:ja "ポン"
+                :romaji "pon" 
+                :it "pon"
+                :en "pon"}}
+   :kan {:wiki "https://riichi.wiki/Kan"
+         :name {:ja "カン"
+                :romaji "kan"
+                :it "kan"
+                :en "kan"}}
+   :ankan {:wiki "https://riichi.wiki/Kan#Ankan"
+           :name {:ja "暗槓"
+                  :romaji "ankan"
+                  :it "kan coperto"
+                  :en "closed kan"}}
+   })
