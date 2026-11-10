@@ -17,7 +17,7 @@ There is also an outdated `cljfx` GUI.
 npm install
 
 # Compile cljs to JS once
-npx shadow-cljs build
+npx shadow-cljs compile app
 
 # Start dev server on :app build (port 8020)
 npx shadow-cljs watch app
@@ -54,14 +54,14 @@ npx shadow-cljs compile test
 
 ```bash
 # Compile all builds
-npx shadow-cljs build
+npx shadow-cljs compile app test
 
 # Watch and compile
 npx shadow-cljs watch
 
 # Clean rebuild
 rm -rf target/ resource/public/assets/js/*
-npx shadow-cljs build
+npx shadow-cljs compile app test
 ```
 
 ---

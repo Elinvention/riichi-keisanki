@@ -17,12 +17,12 @@
   "author": "Elia Argentieri",
   "license": "GPL-3.0",
   "devDependencies": {
-    "shadow-cljs": "^3.3.6"
+    "shadow-cljs": "^3.5.13"
   },
   "dependencies": {
     "bulma": "^1.0.2",
     "bulma-o-steps": "^1.1.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   }
 }

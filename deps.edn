@@ -1,10 +1,10 @@
 {:paths ["src"]
  :deps
- {org.clojure/clojure {:mvn/version "1.12.4"}
+ {org.clojure/clojure {:mvn/version "1.12.6"}
   org.clojure/core.match {:mvn/version "1.1.1"}
-  cljfx/cljfx {:mvn/version "1.10.6"}
-  org.clojure/clojurescript {:mvn/version "1.12.134"}
+  cljfx/cljfx {:mvn/version "1.10.363"}
+  org.clojure/clojurescript {:mvn/version "1.12.145"}
   reagent/reagent {:mvn/version "2.0.1"}}
  :aliases {:test {:extra-paths ["test"]}
            :main {:exec-fn riichi-calc.ui.fx.main/-main}
-           :cljs {:extra-deps {thheller/shadow-cljs {:mvn/version "3.3.6"}}}}}
+           :cljs {:extra-deps {thheller/shadow-cljs {:mvn/version "3.5.13"}}}}}
