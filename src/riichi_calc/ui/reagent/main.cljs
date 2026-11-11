@@ -11,6 +11,7 @@
    [riichi-calc.ui.reagent.game :as ui-game]
    [riichi-calc.ui.reagent.history :as history]
    [riichi-calc.ui.reagent.reagentState :as state]
+   [riichi-calc.ui.reagent.scanner :as scanner]
    [riichi-calc.ui.reagent.svg :as svg]
    [riichi-calc.ui.reagent.widget :as widget]
    [riichi-calc.ui.reagent.wizard :as wizard]
@@ -175,6 +176,7 @@
 (defn hand-menu []
   [:div.field.buttons
    [:button.button.is-info {:on-click wizard/open!} "Wizard"]
+   [:button.button.is-info.is-light {:on-click #(scanner/open! *state)} "Scan"]
    [:button.button.is-primary {:on-click new-hand!} "New hand"]])
 
 (defn hand-agaripai-dorahyouji [theme hand]
@@ -266,6 +268,7 @@
    [keyboard-render]
    [settings/render *state]
    [wizard/render *state]
+   [scanner/render *state]
    [reset-match-modal]])
 
 

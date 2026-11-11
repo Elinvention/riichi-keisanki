@@ -37,6 +37,15 @@ function shortHash(file) {
   return createHash("sha256").update(readFileSync(file)).digest("hex").slice(0, 12);
 }
 
+const modelQualifiers = { fp16: "fp16", int8: "int8", int8s_conv: "int8" };
+
+function modelLabel(name) {
+  const parts = name.replace(/^riichi\.v\d+\./, "").replace(/\.onnx$/, "").split(".");
+  const [model, ...qualifiers] = parts;
+  if (qualifiers.length === 0) qualifiers.push("fp32");
+  return [model, ...qualifiers.map((q) => modelQualifiers[q] ?? q)].join(" ");
+}
+
 function findMainJs() {
   const manifestPath = join(jsDir, "manifest.edn");
   if (existsSync(manifestPath)) {
@@ -86,6 +95,44 @@ let index = readFileSync(indexPath, "utf8");
 index = index.replace("assets/js/main.js", `assets/js/${mainJs}`);
 index = index.replace("assets/css/bulma-steps.css", `assets/css/${bulmaStepsOut}`);
 index = index.replace("assets/css/bulma.css", `assets/css/${bulmaOut}`);
+
+// Content-hash every model under assets/models and inject the list into
+// index.html (window.RIICHI_MODELS) so the UI can offer a model picker while
+// the files can be served with a long cache lifetime. Models keep the order
+// declared in index.html (the first one is the default); files not listed there
+// are appended.
+const declaredOrder = (() => {
+  const match = index.match(/window\.RIICHI_MODELS = (\[[\s\S]*?\]);/);
+  if (!match) return [];
+  return [...match[1].matchAll(/key:\s*"([^"]+)"/g)].map((m) => m[1]);
+})();
+
+const modelsDir = join(distDir, "assets", "models");
+const models = existsSync(modelsDir)
+  ? readdirSync(modelsDir)
+      .filter((f) => f.endsWith(".onnx"))
+      .sort((a, b) => {
+        const ia = declaredOrder.indexOf(a);
+        const ib = declaredOrder.indexOf(b);
+        if (ia !== -1 && ib !== -1) return ia - ib;
+        if (ia !== -1) return -1;
+        if (ib !== -1) return 1;
+        return a.localeCompare(b);
+      })
+      .map((name) => {
+        const path = join(modelsDir, name);
+        const bytes = statSync(path).size;
+        const hashed = `${name.replace(/\.onnx$/, "")}.${shortHash(path)}.onnx`;
+        renameSync(path, join(modelsDir, hashed));
+        return { key: name, name: modelLabel(name), size: bytes, url: `assets/models/${hashed}` };
+      })
+  : [];
+
+index = index.replace(
+  /window\.RIICHI_MODELS = \[[\s\S]*?\];/,
+  `window.RIICHI_MODELS = ${JSON.stringify(models)};`,
+);
+
 writeFileSync(indexPath, index);
 
 const precache = [

@@ -75,7 +75,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (path.includes("/assets/tiles/")) {
+  if (
+    path.includes("/assets/tiles/") ||
+    path.includes("/assets/ort/")
+  ) {
     event.respondWith(cacheFirst(RUNTIME, request));
   }
 });
