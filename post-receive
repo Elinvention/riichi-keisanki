@@ -9,38 +9,62 @@ BARE_REPO=$HOME/repositories/elinvention/riichi-keisanki.git/
 WORKING_DIRECTORY=/var/tmp/riichi-keisanki
 PUBLIC_WWW=/srv/riichi
 
-mkdir -p $WORKING_DIRECTORY
+# Forgejo stores LFS objects in its own store, not inside the bare repo, so a
+# local-path remote can't satisfy git-lfs ("remote missing object"). Point LFS
+# at Forgejo's HTTP endpoint (the same one the push used) so the smudge can
+# download the .onnx/.wasm objects. Requires the repo to be anonymously
+# readable, otherwise add credentials (e.g. an access token via http.extraHeader
+# or a .netrc for the forgejo user).
+LFS_URL=https://code.elinvention.ovh/Elinvention/riichi-keisanki.git/info/lfs
 
-for branch in `env -i git -C $BARE_REPO branch --all --format='%(refname:short)'`
+# Forgejo exports GIT_* variables that confuse git when it operates on other
+# repositories, so git is run with a scrubbed environment. HOME and PATH are the
+# exceptions: git needs them to locate git-lfs, which smudges the .onnx/.wasm
+# files stored as LFS objects. PATH is inherited as-is (NixOS: make sure
+# git-lfs is on the Forgejo service's PATH, e.g. via
+# `systemd.services.forgejo.path = [ pkgs.git-lfs ];`).
+git_clean() {
+    env -i HOME="$HOME" PATH="$PATH" \
+        git -c lfs.url="$LFS_URL" -c remote.origin.lfsurl="$LFS_URL" "$@"
+}
+
+if ! command -v git-lfs >/dev/null 2>&1; then
+    echo "git-lfs is required for LFS objects but was not found on PATH" >&2
+    exit 1
+fi
+
+mkdir -p "$WORKING_DIRECTORY"
+
+for branch in $(git_clean -C "$BARE_REPO" branch --all --format='%(refname:short)')
 do
     bdir="$WORKING_DIRECTORY/$branch"
-    if env -i git -C $bdir rev-parse --is-inside-work-tree
+    if git_clean -C "$bdir" rev-parse --is-inside-work-tree 2>/dev/null
     then
-        env -i git -C $bdir fetch
-        env -i git -C $bdir reset --hard origin/$branch
-        env -i git -C $bdir submodule update --init
+        git_clean -C "$bdir" fetch
+        git_clean -C "$bdir" reset --hard "origin/$branch"
+        git_clean -C "$bdir" submodule update --init
     else
         rm -rf "$bdir"
-        env -i git clone --recurse-submodules $BARE_REPO $bdir -b $branch
+        git_clean clone --recurse-submodules "$BARE_REPO" "$bdir" -b "$branch"
     fi
 done
 
-while read oldrev newrev refname
+while read -r oldrev newrev refname
 do
-    branch=$(env -i git -C $BARE_REPO rev-parse --symbolic --abbrev-ref $refname)
+    branch=$(git_clean -C "$BARE_REPO" rev-parse --symbolic --abbrev-ref "$refname")
 
     pushd "$WORKING_DIRECTORY/$branch"
 
     echo "Running npm install..."
     npm install
-    echo "Compiling with shdow-cljs..."
+    echo "Compiling with shadow-cljs..."
     #clj -M -m cljs.main --optimizations advanced -c riichi-calc.reagent
     BUILD_SHA=${newrev:0:7} npm run build
     echo "Copying files..."
-    rm -rf $PUBLIC_WWW/$branch/
-    mkdir -p $PUBLIC_WWW/$branch/
-    cp -rL dist/* $PUBLIC_WWW/$branch/
+    rm -rf "$PUBLIC_WWW/$branch/"
+    mkdir -p "$PUBLIC_WWW/$branch/"
+    cp -rL dist/* "$PUBLIC_WWW/$branch/"
 
-    echo -e "branch: $branch\nrev: $newrev\nbuild date: $(date)" > $PUBLIC_WWW/$branch/VERSION
+    echo -e "branch: $branch\nrev: $newrev\nbuild date: $(date)" > "$PUBLIC_WWW/$branch/VERSION"
     popd
 done
