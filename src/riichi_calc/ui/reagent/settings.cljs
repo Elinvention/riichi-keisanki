@@ -2,7 +2,7 @@
   (:require
    [reagent.core :as r]
    [cljs.reader :as reader]
-   [riichi-calc.ui.reagent.widget :as widget]))
+   [riichi-calc.ui.reagent.widget.base :as widget]))
 
 (defonce *settings (r/atom {:open false}))
 

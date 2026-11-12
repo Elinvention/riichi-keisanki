@@ -80,7 +80,7 @@
         [:button.button.is-danger {:on-click clear-history!} "Clear History"]
         [:ol (for [[i hand] (map-indexed vector (take 10 hands))]
                ^{:key (str "history-" i "-" (hash hand))}
-               [:li [hand-render theme hand #(restore-hand! hand)]
+               [:li [hand-render theme hand nil]
                 [:div.field.has-addons
                  [:div.control [:button.button.is-link {:on-click #(restore-hand! hand)} "Restore"]]
                  [:div.control [:button.button.is-danger {:on-click #(forget-hand! i)} "Forget"]]]])]])]))

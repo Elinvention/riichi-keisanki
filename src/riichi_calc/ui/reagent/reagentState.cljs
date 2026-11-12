@@ -43,3 +43,8 @@
 
 (defn keyboard-input! [*state tile]
   (swap! *state state/keyboard-input tile))
+
+(def can-input? state/can-input?)
+(def set-extra-dora! state/set-extra-dora!)
+(def set-extra-yaku! state/set-extra-yaku!)
+(def next-keyboard-mode state/next-keyboard-mode)
