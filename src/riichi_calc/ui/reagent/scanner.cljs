@@ -1,7 +1,7 @@
 (ns riichi-calc.ui.reagent.scanner
-  "Modal that captures a photo from the device camera, runs a mahjong tile
-   detection model (on-device YOLOv11 via onnxruntime-web, or the hosted
-   Roboflow serverless API) and populates the concealed hand."
+  "Modal that captures a photo from the device camera, runs an on-device
+   mahjong tile detection model (YOLO via onnxruntime-web) and populates the
+   concealed hand."
   (:require
    [clojure.string :as s]
    [reagent.core :as r]
@@ -12,7 +12,7 @@
    [riichi-calc.ui.reagent.svg :as svg]))
 
 (def initial-scanner
-  {:open false :status :idle :image nil :blob nil :detections [] :error nil
+  {:open false :status :idle :image nil :detections [] :error nil
    :progress nil :inference-ms nil})
 
 (defonce *scanner (r/atom initial-scanner))
@@ -21,12 +21,11 @@
   "Starts downloading the selected on-device model as soon as the scanner is
    opened, so it is ready by the time the user runs a detection."
   [*state]
-  (when (= :onnx (or (get @*state :scan-backend) :onnx))
-    (onnx/preload! (onnx/model-url (get @*state :scan-model))
-                   (fn [loaded total]
-                     (swap! *scanner assoc :progress
-                            (when (or (not (pos? total)) (< loaded total))
-                              {:loaded loaded :total total}))))))
+  (onnx/preload! (onnx/model-url (get @*state :scan-model))
+                 (fn [loaded total]
+                   (swap! *scanner assoc :progress
+                          (when (or (not (pos? total)) (< loaded total))
+                            {:loaded loaded :total total})))))
 
 (defn open! [*state]
   (reset! *scanner (assoc initial-scanner :open true))
@@ -34,9 +33,6 @@
 
 (defn close! []
   (reset! *scanner initial-scanner))
-
-(def ^:private endpoint
-  (str "https://serverless.roboflow.com/" vision/model-id))
 
 (defn- load-image [data-url]
   (js/Promise.
@@ -80,56 +76,14 @@
                          :status :error
                          :error (str "On-device model failed: " err)))))))
 
-(defn- hosted-scan! [*state]
-  (let [api-key (get @*state :roboflow-key)
-        confidence (scan-confidence *state)
-        blob (:blob @*scanner)]
-    (cond
-      (s/blank? api-key)
-      (swap! *scanner assoc :status :error
-             :error "No private API key configured. Add one in Settings.")
-      (s/starts-with? api-key "rf_")
-      (swap! *scanner assoc :status :error
-             :error "That is a publishable key. The hosted model API requires a private API key.")
-      :else
-      (do
-        (swap! *scanner assoc :status :scanning :error nil :inference-ms nil
-               :detections [])
-        ;; multipart/form-data is a CORS-safelisted content type, so no preflight
-        ;; is sent. The Roboflow preflight response omits Access-Control-Allow-
-        ;; Origin, so a JSON/Authorization-header request would be blocked by the
-        ;; browser; sending the key as a query parameter avoids that.
-        (let [form (js/FormData.)]
-          (.append form "file" blob "photo.jpg")
-          (-> (js/fetch (str endpoint
-                             "?api_key=" (js/encodeURIComponent api-key)
-                             "&confidence=" confidence)
-                        #js {:method "POST" :body form})
-              (.then (fn [response]
-                       (if (.-ok response)
-                         (.json response)
-                         (throw (js/Error.
-                                 (str "Roboflow request failed (HTTP "
-                                      (.-status response) ")"))))))
-              (.then (fn [data]
-                       (set-results! (vision/parse-detections
-                                      (js->clj (aget data "predictions")
-                                               :keywordize-keys true)
-                                      confidence))))
-              (.catch (fn [err]
-                        (swap! *scanner assoc :status :error :error (str err))))))))))
-
 (defn- scan! [*state]
-  (let [{:keys [image blob]} @*scanner]
-    (if (or (s/blank? image) (nil? blob))
-      (swap! *scanner assoc :status :error :error "Take or choose a photo first.")
-      (case (or (get @*state :scan-backend) :onnx)
-        :hosted (hosted-scan! *state)
-        (onnx-scan! *state)))))
+  (if (s/blank? (:image @*scanner))
+    (swap! *scanner assoc :status :error :error "Take or choose a photo first.")
+    (onnx-scan! *state)))
 
 (defn- file->image-data
   "Reads an image File, downscales it so its longest side is at most `max-dim`
-   pixels and calls `callback` with a base64 JPEG data URL and a Blob."
+   pixels and calls `callback` with a base64 JPEG data URL."
   [file max-dim callback]
   (let [reader (js/FileReader.)]
     (set! (.-onload reader)
@@ -147,18 +101,14 @@
                         (set! (.-height canvas) nh)
                         (let [ctx (.getContext canvas "2d")]
                           (.drawImage ctx img 0 0 nw nh)
-                          (.toBlob canvas
-                                   (fn [blob]
-                                     (callback (.toDataURL canvas "image/jpeg" 0.85)
-                                               blob))
-                                   "image/jpeg" 0.85)))))
+                          (callback (.toDataURL canvas "image/jpeg" 0.85))))))
               (set! (.-src img) (.-result reader)))))
     (.readAsDataURL reader file)))
 
 (defn- handle-file! [event]
   (when-let [file (some-> event .-target .-files (aget 0))]
     (file->image-data file 640
-                      #(swap! *scanner assoc :image %1 :blob %2
+                      #(swap! *scanner assoc :image %
                               :status :idle :error nil :progress nil
                               :inference-ms nil))))
 
@@ -223,7 +173,7 @@
        [:<>
         [:p "Running inference…"]
         [:p.is-size-7.has-text-grey
-         "The first scan downloads and prepares the model (about 80 MB)."]])]))
+         "The first scan downloads and prepares the model."]])]))
 
 (defn- status-content [*state]
   (let [{:keys [status image detections error progress inference-ms]} @*scanner]
@@ -278,8 +228,8 @@
       [:div.box
        [:h2.title "Scan hand from photo"]
        [:p.is-size-7.has-text-grey
-        "Runs YOLOv11 on-device (or the Roboflow API). Red fives and calls "
-        "(pon/chii/kan) must be set manually afterwards."]
+        "Runs YOLO on-device. Calls (pon/chii/kan) must be set manually "
+        "afterwards."]
        [:hr]
        [status-content *state]]]
      [:button.modal-close.is-large {:aria-label "close"

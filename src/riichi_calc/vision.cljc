@@ -1,11 +1,7 @@
 (ns riichi-calc.vision
-  "Maps Roboflow object-detection output (mahjong tile classes) to riichi-calc
-   tiles. Pure and platform-independent so it can be unit tested."
+  "Maps object-detection output (mahjong tile classes) to riichi-calc tiles.
+   Pure and platform-independent so it can be unit tested."
   (:require [riichi-calc.tile :as tile]))
-
-(def model-id
-  "Roboflow model id, as <project>/<version>."
-  "mahjong-baq4s/83")
 
 (def default-confidence 0.4)
 
@@ -25,7 +21,7 @@
    "WD" [:dragon :white]})
 
 (defn class->tile
-  "Maps a Roboflow class label such as \"1B\", \"EW\" or \"GD\" to a tile.
+  "Maps a detection class label such as \"1B\", \"EW\" or \"GD\" to a tile.
    Returns nil for unsupported classes (flowers, seasons, unknown)."
   [klass]
   (when (string? klass)
@@ -42,8 +38,8 @@
   [(or x 0) (or y 0)])
 
 (defn parse-detections
-  "Normalises Roboflow detections into a vector of maps, each the original
-   detection assoc'd with its :tile, keeping only supported classes above
+  "Normalises detections into a vector of maps, each the original detection
+   assoc'd with its :tile, keeping only supported classes above
    `min-confidence`, ordered in reading order."
   ([detections] (parse-detections detections default-confidence))
   ([detections min-confidence]
