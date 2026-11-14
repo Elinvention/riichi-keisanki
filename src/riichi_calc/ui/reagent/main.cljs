@@ -10,6 +10,7 @@
    [riichi-calc.ui.reagent.audio :as audio]
    [riichi-calc.ui.reagent.game :as ui-game]
    [riichi-calc.ui.reagent.history :as history]
+   [riichi-calc.ui.reagent.onnx :as onnx]
    [riichi-calc.ui.reagent.reagentState :as state]
    [riichi-calc.ui.reagent.scanner :as scanner]
    [riichi-calc.ui.reagent.svg :as svg]
@@ -306,6 +307,7 @@
 (defn init
   []
   (settings/load-settings! *state)
+  (onnx/refresh-models!)
   (audio/play-tile-down-sfx)
   (history/init!)
   (register-service-worker!)

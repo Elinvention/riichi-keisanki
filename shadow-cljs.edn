@@ -1,7 +1,8 @@
 ;; shadow-cljs configuration
 {:deps {:aliases [:cljs :test]}
 
- :dev-http {8020 "resources/public"}
+ :dev-http {8020 {:root "resources/public"
+                  :handler riichi-calc.dev/handler}}
 
  :builds {:app {:target :browser
                 ; The directory to use for all compiler output.

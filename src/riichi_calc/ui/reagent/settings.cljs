@@ -11,6 +11,7 @@
 (def ^:private settings-serialization-version 3)
 
 (defn open! []
+  (onnx/refresh-models!)
   (swap! *settings assoc :open true))
 
 (defn close! []
@@ -79,10 +80,10 @@
                                  (swap! *state assoc k (when-not (js/isNaN v) v)))
                                (save-settings! *state))}]])
 
-(defn- model-label [{:keys [name size]}]
+(defn- model-label [{:keys [key size]}]
   (if (number? size)
-    (str name " (" (.toFixed (/ size 1048576.0) 1) " MB)")
-    name))
+    (str key " (" (.toFixed (/ size 1048576.0) 1) " MB)")
+    key))
 
 (defn model-selector [*state]
   (let [available (onnx/models)
@@ -100,7 +101,7 @@
   [:div.field
    [:label.label "Model"]
    [model-selector *state]
-   [:p.help "On-device YOLOv11 ONNX model, run in the browser with "
+   [:p.help "On-device YOLO ONNX model, run in the browser with "
     "onnxruntime-web. All bundled models are available."]
    [:label.label.mt-2 "IoU threshold (NMS)"]
    [number-input *state :scan-iou yolo/default-iou 0 1 0.05]

@@ -3,7 +3,8 @@
    tag in index.html): loads the bundled YOLOv11 model once and runs detection on
    an <img> element, returning detections ready for
    `riichi-calc.vision/parse-detections`."
-  (:require [riichi-calc.vision.yolo :as yolo]))
+  (:require [reagent.core :as r]
+            [riichi-calc.vision.yolo :as yolo]))
 
 (defonce ^:private *sessions (atom {}))
 
@@ -65,27 +66,52 @@
                               (on-progress (.-length out) (.-length out)))
                             out))))))))))
 
-(defn- default-model-path
-  "The model URL: injected into index.html at build time with a content hash
-   (`window.RIICHI_MODEL_URL`), so it can be served with a long cache lifetime.
-   Falls back to the plain path for development."
-  []
-  (or (aget js/window "RIICHI_MODEL_URL") yolo/default-model-path))
+(defn- normalize-model [m]
+  {:key (:key m) :size (:size m) :url (:url m)})
 
-(defn models
-  "Available detection models, injected into index.html at build time as
-   `window.RIICHI_MODELS` (content-hashed in production). Each entry is
-   {:key :name :size :url}. Falls back to the single bundled model in
-   development."
-  []
+(defn- injected-models []
   (if-let [ms (aget js/window "RIICHI_MODELS")]
     (mapv (fn [^js m]
-            {:key (aget m "key") :name (aget m "name")
-             :size (aget m "size") :url (aget m "url")})
+            {:key (aget m "key") :size (aget m "size") :url (aget m "url")})
           (array-seq ms))
     [{:key "riichi.v2.yolo26s.int8.onnx"
-      :name "yolo26s int8"
-      :url (default-model-path)}]))
+      :url yolo/default-model-path}]))
+
+(defonce ^:private *models (r/atom (injected-models)))
+
+(defn models
+  "Currently available detection models, each {:key :size :url}. In release
+   builds this is the list baked into index.html (content-hashed by
+   fingerprint.mjs); during development it is refreshed from the dev server so
+   added/removed .onnx files show up without editing index.html."
+  []
+  @*models)
+
+(defn refresh-models!
+  "During development, fetches the live model list from the shadow-cljs dev
+   server (see `riichi-calc.dev/handler`). No-op in release builds, where the
+   list is baked into index.html."
+  []
+  (when ^boolean goog.DEBUG
+    (-> (js/fetch "assets/models/dev-models.json" #js {:cache "no-store"})
+        (.then (fn [^js response]
+                 (if (.-ok response)
+                   (.json response)
+                   (throw (js/Error. "dev models manifest unavailable")))))
+        (.then (fn [data]
+                 (let [ms (mapv (fn [m] (normalize-model
+                                         (js->clj m :keywordize-keys true)))
+                                (array-seq data))]
+                   (when (seq ms)
+                     (reset! *models ms)))))
+        (.catch (fn [err]
+                  (js/console.debug "Live model list unavailable:" err))))))
+
+(defn- default-model-path
+  "The URL of the default model: the first entry of `models`, falling back to
+   the bundled path for development."
+  []
+  (or (:url (first (models))) yolo/default-model-path))
 
 (defn model-url
   "Resolves a model `key` (as persisted in settings) to its current URL, so a

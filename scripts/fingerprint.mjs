@@ -37,15 +37,6 @@ function shortHash(file) {
   return createHash("sha256").update(readFileSync(file)).digest("hex").slice(0, 12);
 }
 
-const modelQualifiers = { fp16: "fp16", int8: "int8", int8s_conv: "int8" };
-
-function modelLabel(name) {
-  const parts = name.replace(/^riichi\.v\d+\./, "").replace(/\.onnx$/, "").split(".");
-  const [model, ...qualifiers] = parts;
-  if (qualifiers.length === 0) qualifiers.push("fp32");
-  return [model, ...qualifiers.map((q) => modelQualifiers[q] ?? q)].join(" ");
-}
-
 function findMainJs() {
   const manifestPath = join(jsDir, "manifest.edn");
   if (existsSync(manifestPath)) {
@@ -146,7 +137,7 @@ const models = existsSync(modelsDir)
         const bytes = statSync(path).size;
         const hashed = `${name.replace(/\.onnx$/, "")}.${shortHash(path)}.onnx`;
         renameSync(path, join(modelsDir, hashed));
-        return { key: name, name: modelLabel(name), size: bytes, url: `assets/models/${hashed}` };
+        return { key: name, size: bytes, url: `assets/models/${hashed}` };
       })
   : [];
 
