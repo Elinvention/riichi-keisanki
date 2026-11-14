@@ -6,11 +6,13 @@
 (def default-input-size 640)
 (def default-confidence 0.25)
 (def default-iou 0.45)
-(def default-model-path "assets/models/riichi.v1.yolo11m.onnx")
+(def default-model-path "assets/models/riichi.v2.yolo26s.int8.onnx")
 
 (def class-labels
-  "Class index -> label, in the order the model was trained (Roboflow Mahjong
-   dataset order). Indexes map to `vision/class->tile`."
+  "Default class index -> label, in the order the v1 model was trained (the
+   Mahjong dataset order). Models trained with a different class list (e.g. the
+   v2 models with red fives) store their own names in the ONNX metadata; see
+   `labels-from-names-string`."
   ["1B" "1C" "1D" "1F" "1S"
    "2B" "2C" "2D" "2F" "2S"
    "3B" "3C" "3D" "3F" "3S"
@@ -22,8 +24,21 @@
    "9B" "9C" "9D"
    "EW" "GD" "NW" "RD" "SW" "WD" "WW"])
 
-(defn class-index->label [index]
-  (get class-labels index))
+(defn labels-from-names-string
+  "Parses an ONNX `names` metadata value such as
+   \"{0: '1B', 1: '1C', ...}\" into a vector indexed by class id. Returns nil
+   when no entries are found."
+  [s]
+  (when (string? s)
+    (let [pairs (re-seq #"(\d+):\s*'([^']*)'" s)]
+      (when (seq pairs)
+        (reduce (fn [labels [_ index label]]
+                  (assoc labels (parse-long index) label))
+                [] pairs)))))
+
+(defn class-index->label
+  ([index] (class-index->label class-labels index))
+  ([labels index] (get labels index)))
 
 (defn letterbox
   "Geometry to fit a src-w x src-h image into a size x size canvas without
@@ -133,23 +148,26 @@
 (defn box->detection
   "Converts a box to the detection map shape consumed by
    `riichi-calc.vision/parse-detections`, dropping unsupported classes."
-  [{:keys [x1 y1 x2 y2 score class-idx]}]
-  (when-let [label (class-index->label class-idx)]
-    {:class label
-     :confidence score
-     :x (/ (+ x1 x2) 2.0)
-     :y (/ (+ y1 y2) 2.0)
-     :width (- x2 x1)
-     :height (- y2 y1)}))
+  ([box] (box->detection class-labels box))
+  ([labels {:keys [x1 y1 x2 y2 score class-idx]}]
+   (when-let [label (class-index->label labels class-idx)]
+     {:class label
+      :confidence score
+      :x (/ (+ x1 x2) 2.0)
+      :y (/ (+ y1 y2) 2.0)
+      :width (- x2 x1)
+      :height (- y2 y1)})))
 
 (defn postprocess
   "Full pipeline: tensor output (in model-input pixels) plus its letterbox
    geometry -> detections in original image coordinates, ready for
-   `riichi-calc.vision/parse-detections`."
-  [data dims {:keys [confidence iou]} box]
-  (let [boxes (decode-output data dims (or confidence default-confidence))
+   `riichi-calc.vision/parse-detections`. `labels` in `opts` selects the class
+   mapping (defaults to `class-labels`)."
+  [data dims {:keys [confidence iou labels]} box]
+  (let [labels (or labels class-labels)
+        boxes (decode-output data dims (or confidence default-confidence))
         kept (nms boxes (or iou default-iou))]
     (->> kept
          (map #(unletterbox % box))
-         (keep box->detection)
+         (keep #(box->detection labels %))
          vec)))

@@ -17,6 +17,12 @@
     (is (= (t/dragon :green) (v/class->tile "GD")))
     (is (= (t/dragon :red) (v/class->tile "RD")))
     (is (= (t/dragon :white) (v/class->tile "WD"))))
+  (testing "red fives"
+    (is (= (t/redfive :sou) (v/class->tile "5B-red")))
+    (is (= (t/redfive :man) (v/class->tile "5C-red")))
+    (is (= (t/redfive :pin) (v/class->tile "5D-red")))
+    (is (t/redfive? (v/class->tile "5B-red")))
+    (is (= (t/sou 5) (v/class->tile "5B"))))
   (testing "unsupported and invalid classes"
     (is (nil? (v/class->tile "1F")))
     (is (nil? (v/class->tile "2S")))

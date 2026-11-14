@@ -107,18 +107,40 @@ const declaredOrder = (() => {
   return [...match[1].matchAll(/key:\s*"([^"]+)"/g)].map((m) => m[1]);
 })();
 
+const qualifierRank = { int8: 0, int8s_conv: 0, fp16: 1, fp32: 2 };
+
+function modelSortKey(name) {
+  const match = name.match(/^riichi\.v(\d+)\.(.+)\.onnx$/);
+  if (!match) return { version: 0, rank: 9, name };
+  const parts = match[2].split(".");
+  const qualifier = parts.length > 1 ? parts[parts.length - 1] : "fp32";
+  return {
+    version: Number(match[1]),
+    rank: qualifierRank[qualifier] ?? 9,
+    name,
+  };
+}
+
+// Declared models keep the order from index.html (the first one is the default);
+// any undeclared file is appended by newest version, then fastest variant.
+function compareModels(a, b) {
+  const ia = declaredOrder.indexOf(a);
+  const ib = declaredOrder.indexOf(b);
+  if (ia !== -1 && ib !== -1) return ia - ib;
+  if (ia !== -1) return -1;
+  if (ib !== -1) return 1;
+  const ka = modelSortKey(a);
+  const kb = modelSortKey(b);
+  if (ka.version !== kb.version) return kb.version - ka.version;
+  if (ka.rank !== kb.rank) return ka.rank - kb.rank;
+  return a.localeCompare(b);
+}
+
 const modelsDir = join(distDir, "assets", "models");
 const models = existsSync(modelsDir)
   ? readdirSync(modelsDir)
       .filter((f) => f.endsWith(".onnx"))
-      .sort((a, b) => {
-        const ia = declaredOrder.indexOf(a);
-        const ib = declaredOrder.indexOf(b);
-        if (ia !== -1 && ib !== -1) return ia - ib;
-        if (ia !== -1) return -1;
-        if (ib !== -1) return 1;
-        return a.localeCompare(b);
-      })
+      .sort(compareModels)
       .map((name) => {
         const path = join(modelsDir, name);
         const bytes = statSync(path).size;

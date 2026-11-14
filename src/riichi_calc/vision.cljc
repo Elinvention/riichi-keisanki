@@ -21,12 +21,16 @@
    "WD" [:dragon :white]})
 
 (defn class->tile
-  "Maps a detection class label such as \"1B\", \"EW\" or \"GD\" to a tile.
-   Returns nil for unsupported classes (flowers, seasons, unknown)."
+  "Maps a detection class label such as \"1B\", \"5B-red\", \"EW\" or \"GD\" to a
+   tile. Returns nil for unsupported classes (flowers, seasons, unknown)."
   [klass]
   (when (string? klass)
-    (or (when-let [[_ value-str suffix] (re-matches #"([1-9])([BCD])" klass)]
-          (tile/tile (suffix-seeds suffix) (parse-long value-str)))
+    (or (when-let [[_ value-str suffix red] (re-matches #"([1-9])([BCD])(-red)?" klass)]
+          (let [seed (suffix-seeds suffix)
+                value (parse-long value-str)]
+            (if (and red (= 5 value))
+              (tile/redfive seed)
+              (tile/tile seed value))))
         (when-let [[seed value] (honor-classes klass)]
           (tile/tile seed value)))))
 

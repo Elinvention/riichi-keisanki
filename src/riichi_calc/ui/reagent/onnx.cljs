@@ -83,8 +83,8 @@
             {:key (aget m "key") :name (aget m "name")
              :size (aget m "size") :url (aget m "url")})
           (array-seq ms))
-    [{:key "riichi.v1.yolo11m.onnx"
-      :name "yolo11m"
+    [{:key "riichi.v2.yolo26s.int8.onnx"
+      :name "yolo26s int8"
       :url (default-model-path)}]))
 
 (defn model-url
@@ -94,19 +94,63 @@
   (or (some (fn [m] (when (= key (:key m)) (:url m))) (models))
       (default-model-path)))
 
+(def ^:private names-marker-length 5) ; "{0: '"
+
+(defn- names-marker-at?
+  "True when the `names` metadata marker (\"{0: '\") starts at `i` in `data`."
+  [^js data i]
+  (and (<= (+ i names-marker-length) (.-length data))
+       (== (aget data i) 123)        ; {
+       (== (aget data (+ i 1)) 48)   ; 0
+       (== (aget data (+ i 2)) 58)   ; :
+       (== (aget data (+ i 3)) 32)   ; space
+       (== (aget data (+ i 4)) 39))) ; '
+
+(defn- names-string
+  "Finds the ONNX `names` metadata (stored as \"{0: 'label', ...}\") in the raw
+   model bytes and returns it. It lives near the end of the file."
+  [^js data]
+  (let [from (loop [i (.indexOf data 123)] ; {
+               (if (neg? i)
+                 nil
+                 (if (names-marker-at? data i)
+                   i
+                   (recur (.indexOf data 123 (inc i))))))]
+    (when from
+      (let [end (.indexOf data 125 from)] ; }
+        (when (pos? end)
+          (.decode (js/TextDecoder.) (.subarray data from (inc end))))))))
+
+(defn- model-labels
+  "Class labels declared in the model's ONNX metadata, so models trained with
+   different class lists (e.g. v2 with red fives) decode correctly. Falls back
+   to the v1 label list when the metadata is missing."
+  [^js data]
+  (if-let [labels (some-> (names-string data)
+                          yolo/labels-from-names-string
+                          not-empty)]
+    labels
+    (do (js/console.warn "No class names found in model metadata; using defaults.")
+        yolo/class-labels)))
+
 (defn- load-session!
   "Loads an InferenceSession for `path`, downloading the model the first time.
-   `on-progress` is `(fn [loaded total])`."
+   Resolves to `{:session ... :labels ...}`, where `labels` are the class names
+   declared by the model. `on-progress` is `(fn [loaded total])`."
   [^js o path on-progress]
   (if-let [cached (get @*sessions path)]
     cached
     (let [^js InferenceSession (.-InferenceSession o)
           promise (-> (fetch-model-data path on-progress)
-                      (.then (fn [data]
-                               (.create InferenceSession
+                      (.then
+                       (fn [data]
+                         (let [labels (model-labels data)]
+                           (-> (.create InferenceSession
                                         data
                                         #js {:executionProviders #js ["wasm"]
-                                             :graphOptimizationLevel "all"})))
+                                             :graphOptimizationLevel "all"})
+                               (.then (fn [^js session]
+                                        {:session session :labels labels}))))))
                       (.catch (fn [err]
                                 (swap! *sessions dissoc path)
                                 (throw err))))]
@@ -178,8 +222,10 @@
             path (or model-path (default-model-path))]
         (-> (load-session! o path on-progress)
             (.then
-             (fn [^js session]
-               (let [size (session-input-size session)
+             (fn [loaded]
+               (let [^js session (:session loaded)
+                     labels (:labels loaded)
+                     size (session-input-size session)
                      box (yolo/letterbox (.-width img) (.-height img) size)
                      data (image->tensor-data img size box)
                      tensor (Tensor. "float32" data #js [1 3 size size])
@@ -195,7 +241,8 @@
                               dims (typed-array->vec (.-dims out))
                               detections (yolo/postprocess flat dims
                                                            {:confidence confidence
-                                                            :iou iou}
+                                                            :iou iou
+                                                            :labels labels}
                                                            box)]
                           (.dispose out)
                           (.dispose tensor)

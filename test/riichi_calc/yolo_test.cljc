@@ -2,6 +2,9 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [riichi-calc.vision.yolo :as yolo]))
 
+(def ^:private v2-names
+  "{0: '1B', 1: '1C', 2: '1D', 3: '1F', 4: '1S', 5: '2B', 6: '2C', 7: '2D', 8: '2F', 9: '2S', 10: '3B', 11: '3C', 12: '3D', 13: '3F', 14: '3S', 15: '4B', 16: '4C', 17: '4D', 18: '4F', 19: '4S', 20: '5B', 21: '5B-red', 22: '5C', 23: '5C-red', 24: '5D', 25: '5D-red', 26: '6B', 27: '6C', 28: '6D', 29: '7B', 30: '7C', 31: '7D', 32: '8B', 33: '8C', 34: '8D', 35: '9B', 36: '9C', 37: '9D', 38: 'EW', 39: 'GD', 40: 'NW', 41: 'RD', 42: 'SW', 43: 'WD', 44: 'WW'}")
+
 (deftest letterbox
   (testing "wide image is padded vertically"
     (is (= {:scale 0.5 :draw-w 640.0 :draw-h 360.0 :pad-x 0.0 :pad-y 140.0}
@@ -16,7 +19,23 @@
   (is (= "1D" (yolo/class-index->label 2)))
   (is (= "EW" (yolo/class-index->label 35)))
   (is (= "WW" (yolo/class-index->label 41)))
-  (is (nil? (yolo/class-index->label 42))))
+  (is (nil? (yolo/class-index->label 42)))
+  (testing "explicit labels override the defaults"
+    (is (= "5B-red" (yolo/class-index->label ["a" "b" "5B-red"] 2)))))
+
+(deftest labels-from-names-string
+  (testing "parses ONNX names metadata in class-id order"
+    (is (= ["1B" "1C" "5B-red"]
+           (yolo/labels-from-names-string "{0: '1B', 1: '1C', 2: '5B-red'}")))
+    (let [labels (yolo/labels-from-names-string v2-names)]
+      (is (= 45 (count labels)))
+      (is (= "5B" (nth labels 20)))
+      (is (= "5B-red" (nth labels 21)))
+      (is (= "WW" (nth labels 44)))))
+  (testing "returns nil for missing metadata"
+    (is (nil? (yolo/labels-from-names-string nil)))
+    (is (nil? (yolo/labels-from-names-string "")))
+    (is (nil? (yolo/labels-from-names-string "metadata_props")))))
 
 (deftest decode-standard
   (testing "decodes cxcywh + class scores layout [1, 4+nc, anchors]"
